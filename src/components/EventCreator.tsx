@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import type { CalendarEvent, EventType } from '../types'
+import type { CalendarEvent, EventType, TimeFormat } from '../types'
 import { EVENT_COLORS } from '../constants'
 import { generateId, formatTime } from '../utils'
 
 interface EventCreatorProps {
   startH: number
   endH: number
-  /** Viewport coordinates for positioning the popover */
   anchorX: number
   anchorY: number
+  timeFormat: TimeFormat
   onConfirm: (event: CalendarEvent) => void
   onCancel: () => void
 }
@@ -18,6 +18,7 @@ export default function EventCreator({
   endH,
   anchorX,
   anchorY,
+  timeFormat,
   onConfirm,
   onCancel,
 }: EventCreatorProps) {
@@ -94,7 +95,7 @@ export default function EventCreator({
         <div className="bg-white rounded-2xl shadow-xl shadow-black/8 border border-gray-100 p-5 space-y-4">
           {/* Time display */}
           <div className="text-xs font-mono text-gray-400 tracking-wide">
-            {formatTime(startH)} — {formatTime(endH)}
+            {formatTime(startH, timeFormat)} — {formatTime(endH, timeFormat)}
           </div>
 
           {/* Title input */}

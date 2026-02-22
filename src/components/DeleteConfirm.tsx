@@ -1,15 +1,17 @@
 import { useEffect } from 'react'
-import type { CalendarEvent } from '../types'
+import type { CalendarEvent, TimeFormat } from '../types'
 import { formatTime } from '../utils'
 
 interface DeleteConfirmProps {
   event: CalendarEvent
+  timeFormat: TimeFormat
   onDelete: () => void
   onCancel: () => void
 }
 
 export default function DeleteConfirm({
   event,
+  timeFormat,
   onDelete,
   onCancel,
 }: DeleteConfirmProps) {
@@ -46,7 +48,7 @@ export default function DeleteConfirm({
                 {event.title}
               </h3>
               <p className="text-sm text-gray-400 font-mono">
-                {formatTime(event.startH)} — {formatTime(event.endH)}
+                {formatTime(event.startH, timeFormat)} — {formatTime(event.endH, timeFormat)}
               </p>
             </div>
 

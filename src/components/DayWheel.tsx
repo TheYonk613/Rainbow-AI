@@ -1,11 +1,13 @@
 import { useRef, useMemo, useCallback, useState } from 'react'
-import type { CalendarEvent, Position } from '../types'
+import type { CalendarEvent, Position, DragState, ResizeState, TimeFormat } from '../types'
 import {
   WHEEL_SIZE,
   WHEEL_CENTER,
   RING_RADIUS,
   RING_THICKNESS,
+  SLEEP_THICKNESS,
   HANDLE_RADIUS,
+  EDGE_HIT_RADIUS,
   START_OF_DAY,
   TOTAL_HOURS,
 } from '../constants'
@@ -14,95 +16,378 @@ import {
   hourToPosition,
   arcPath,
   arcLength,
-  formatTimeShort,
+  formatTime,
+  formatMarker,
   degToRad,
   clientToSVG,
   isOnRing,
   pointToHour,
   findGapAtTime,
+  snapToQuarter,
+  getDragBounds,
+  getResizeBounds,
+  computeAngleOffset,
 } from '../utils'
+
+const DRAG_THRESHOLD = 6
 
 interface DayWheelProps {
   events: CalendarEvent[]
   currentTime: number
+  activeStart: number
+  activeEnd: number
+  timeFormat: TimeFormat
   onGapClick: (hour: number, clientX: number, clientY: number) => void
   onEventClick: (event: CalendarEvent) => void
+  onEventTimeChange: (id: string, startH: number, endH: number) => void
+}
+
+interface EdgeRef {
+  eventId: string
+  edge: 'start' | 'end'
+}
+
+function findNearestEdge(
+  pt: Position,
+  hour: number,
+  events: CalendarEvent[],
+  offset: number
+): (EdgeRef & { dist: number }) | null {
+  let closest: (EdgeRef & { dist: number }) | null = null
+
+  for (const ev of events) {
+    if (ev.isPopping) continue
+    const sp = hourToPosition(ev.startH, offset)
+    const ep = hourToPosition(ev.endH, offset)
+    const ds = Math.hypot(pt.x - sp.x, pt.y - sp.y)
+    const de = Math.hypot(pt.x - ep.x, pt.y - ep.y)
+    const isInside = hour >= ev.startH && hour < ev.endH
+
+    if (ds < EDGE_HIT_RADIUS) {
+      if (!closest || ds < closest.dist || (ds === closest.dist && isInside)) {
+        closest = { eventId: ev.id, edge: 'start', dist: ds }
+      }
+    }
+    if (de < EDGE_HIT_RADIUS) {
+      if (!closest || de < closest.dist || (de === closest.dist && isInside)) {
+        closest = { eventId: ev.id, edge: 'end', dist: de }
+      }
+    }
+  }
+
+  return closest
 }
 
 export default function DayWheel({
   events,
   currentTime,
+  activeStart,
+  activeEnd,
+  timeFormat,
   onGapClick,
   onEventClick,
+  onEventTimeChange,
 }: DayWheelProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoverHour, setHoverHour] = useState<number | null>(null)
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const [resize, setResize] = useState<ResizeState | null>(null)
+  const [settlingId, setSettlingId] = useState<string | null>(null)
+  const [hoveredEdge, setHoveredEdge] = useState<EdgeRef | null>(null)
+
+  const pointerStartRef = useRef<Position | null>(null)
+
+  // ─── Dynamic rotation offset ──────────────────────────────────
+
+  const angleOffset = useMemo(
+    () => computeAngleOffset(activeStart, activeEnd),
+    [activeStart, activeEnd]
+  )
 
   const sorted = useMemo(
     () => [...events].sort((a, b) => a.startH - b.startH),
     [events]
   )
 
-  // Hour markers (every 2 hours)
+  const isInteracting = (drag?.hasMoved || resize?.hasMoved) ?? false
+  const activeEventId = drag?.eventId ?? resize?.eventId ?? null
+
+  // ─── Sleep / active arc geometry ──────────────────────────────
+
+  const { activeArc, sleepArc } = useMemo(() => {
+    const aStart = hourToAngle(activeStart, angleOffset)
+    let aEnd = hourToAngle(activeEnd === 0 ? 24 : activeEnd, angleOffset)
+    if (aEnd <= aStart) aEnd += 360
+
+    // Sleep fills the remainder
+    const sStart = aEnd
+    const sEnd = aStart + 360
+
+    return {
+      activeArc: arcPath(WHEEL_CENTER, WHEEL_CENTER, RING_RADIUS, aStart, aEnd),
+      sleepArc: arcPath(WHEEL_CENTER, WHEEL_CENTER, RING_RADIUS, sStart, sEnd),
+    }
+  }, [activeStart, activeEnd, angleOffset])
+
+  // ─── Hour markers (every 3 hours = 8 markers) ────────────────
+
   const markers = useMemo(() => {
     const result = []
-    for (let h = START_OF_DAY; h < START_OF_DAY + TOTAL_HOURS; h++) {
-      const show = h % 2 === 0 || h === START_OF_DAY
-      if (!show) continue
-      const angle = hourToAngle(h)
+    for (let h = 0; h < TOTAL_HOURS; h += 3) {
+      const angle = hourToAngle(h, angleOffset)
       const rad = degToRad(angle)
       const labelR = RING_RADIUS + RING_THICKNESS / 2 + 22
+      const isMajor = h % 6 === 0 // 0, 6, 12, 18 are major
       result.push({
         h,
         x: WHEEL_CENTER + labelR * Math.cos(rad),
         y: WHEEL_CENTER + labelR * Math.sin(rad),
+        isMajor,
       })
     }
     return result
-  }, [])
+  }, [angleOffset])
 
-  // Boundary handles (white dots at segment edges)
+  // ─── Boundary handles ─────────────────────────────────────────
+
   const handles = useMemo(() => {
     const activeEvents = sorted.filter((e) => !e.isPopping)
-    const points: Position[] = []
+    const points: { pos: Position; eventId: string; edge: 'start' | 'end' }[] = []
+
     for (const event of activeEvents) {
-      points.push(hourToPosition(event.startH))
-      points.push(hourToPosition(event.endH))
+      let sH = event.startH
+      let eH = event.endH
+
+      if (drag && event.id === drag.eventId) {
+        sH = drag.previewStartH
+        eH = drag.previewEndH
+      } else if (resize && event.id === resize.eventId) {
+        sH = resize.previewStartH
+        eH = resize.previewEndH
+      }
+
+      points.push({ pos: hourToPosition(sH, angleOffset), eventId: event.id, edge: 'start' })
+      points.push({ pos: hourToPosition(eH, angleOffset), eventId: event.id, edge: 'end' })
     }
-    const unique: Position[] = []
+
+    const unique: typeof points = []
     for (const p of points) {
       const tooClose = unique.some(
-        (u) => Math.abs(u.x - p.x) < 4 && Math.abs(u.y - p.y) < 4
+        (u) => Math.abs(u.pos.x - p.pos.x) < 4 && Math.abs(u.pos.y - p.pos.y) < 4
       )
       if (!tooClose) unique.push(p)
     }
     return unique
-  }, [sorted])
+  }, [sorted, drag, resize, angleOffset])
 
-  // Now indicator
-  const nowPos = useMemo(() => hourToPosition(currentTime), [currentTime])
+  const nowPos = useMemo(
+    () => hourToPosition(currentTime, angleOffset),
+    [currentTime, angleOffset]
+  )
 
-  // Hover state
   const hoverPos = useMemo(
-    () => (hoverHour !== null ? hourToPosition(hoverHour) : null),
-    [hoverHour]
+    () => (hoverHour !== null ? hourToPosition(hoverHour, angleOffset) : null),
+    [hoverHour, angleOffset]
   )
   const hoverInGap = useMemo(
-    () => (hoverHour !== null ? findGapAtTime(events, hoverHour) !== null : false),
+    () =>
+      hoverHour !== null ? findGapAtTime(events, hoverHour) !== null : false,
     [events, hoverHour]
   )
 
-  // ─── Click: distinguish event click vs gap click ──────────────
+  const hoverEventId = useMemo(() => {
+    if (hoverHour === null) return null
+    const ev = events.find(
+      (e) => !e.isPopping && hoverHour >= e.startH && hoverHour < e.endH
+    )
+    return ev?.id ?? null
+  }, [events, hoverHour])
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent<SVGSVGElement>) => {
+  // ─── Pointer handlers ─────────────────────────────────────────
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<SVGSVGElement>) => {
       if (!svgRef.current) return
       const pt = clientToSVG(svgRef.current, e.clientX, e.clientY)
       if (!isOnRing(pt)) return
 
-      const hour = pointToHour(pt)
+      const hour = pointToHour(pt, angleOffset)
 
-      // Did we click on an existing event?
+      // Priority 1: edge hit → resize
+      const nearEdge = findNearestEdge(pt, hour, events, angleOffset)
+      if (nearEdge) {
+        ;(e.target as SVGElement).setPointerCapture(e.pointerId)
+        pointerStartRef.current = pt
+
+        const bounds = getResizeBounds(nearEdge.eventId, nearEdge.edge, events)
+        const ev = events.find((x) => x.id === nearEdge.eventId)!
+
+        setResize({
+          eventId: nearEdge.eventId,
+          edge: nearEdge.edge,
+          fixedHour: bounds.fixedHour,
+          minHour: bounds.minHour,
+          maxHour: bounds.maxHour,
+          previewStartH: ev.startH,
+          previewEndH: ev.endH,
+          hasMoved: false,
+        })
+
+        setHoverHour(null)
+        setHoveredEdge(null)
+        e.preventDefault()
+        return
+      }
+
+      // Priority 2: interior → drag
+      const clickedEvent = events.find(
+        (ev) => !ev.isPopping && hour >= ev.startH && hour < ev.endH
+      )
+      if (!clickedEvent) return
+
+      ;(e.target as SVGElement).setPointerCapture(e.pointerId)
+      pointerStartRef.current = pt
+
+      const bounds = getDragBounds(clickedEvent.id, events)
+      const eventMid = (clickedEvent.startH + clickedEvent.endH) / 2
+      const grabOffset = hour - eventMid
+
+      setDrag({
+        eventId: clickedEvent.id,
+        duration: bounds.duration,
+        grabOffset,
+        minStart: bounds.minStart,
+        maxStart: bounds.maxStart,
+        previewStartH: clickedEvent.startH,
+        previewEndH: clickedEvent.endH,
+        hasMoved: false,
+      })
+
+      setHoverHour(null)
+      setHoveredEdge(null)
+      e.preventDefault()
+    },
+    [events, angleOffset]
+  )
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<SVGSVGElement>) => {
+      if (!svgRef.current) return
+      const pt = clientToSVG(svgRef.current, e.clientX, e.clientY)
+
+      // ─── Resize ───
+      if (resize) {
+        if (!resize.hasMoved && pointerStartRef.current) {
+          const dx = pt.x - pointerStartRef.current.x
+          const dy = pt.y - pointerStartRef.current.y
+          if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return
+        }
+
+        const hour = pointToHour(pt, angleOffset)
+
+        if (resize.edge === 'start') {
+          const newStart = snapToQuarter(
+            Math.max(resize.minHour, Math.min(resize.maxHour, hour))
+          )
+          setResize((prev) =>
+            prev
+              ? { ...prev, previewStartH: newStart, previewEndH: prev.fixedHour, hasMoved: true }
+              : null
+          )
+        } else {
+          const newEnd = snapToQuarter(
+            Math.max(resize.minHour, Math.min(resize.maxHour, hour))
+          )
+          setResize((prev) =>
+            prev
+              ? { ...prev, previewStartH: prev.fixedHour, previewEndH: newEnd, hasMoved: true }
+              : null
+          )
+        }
+        return
+      }
+
+      // ─── Drag ───
+      if (drag) {
+        if (!drag.hasMoved && pointerStartRef.current) {
+          const dx = pt.x - pointerStartRef.current.x
+          const dy = pt.y - pointerStartRef.current.y
+          if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return
+        }
+
+        const hour = pointToHour(pt, angleOffset)
+        const newMid = hour - drag.grabOffset
+        let newStart = newMid - drag.duration / 2
+
+        newStart = Math.max(drag.minStart, Math.min(drag.maxStart, newStart))
+        newStart = snapToQuarter(newStart)
+        const newEnd = snapToQuarter(newStart + drag.duration)
+
+        setDrag((prev) =>
+          prev
+            ? { ...prev, previewStartH: newStart, previewEndH: newEnd, hasMoved: true }
+            : null
+        )
+        return
+      }
+
+      // ─── Hover ───
+      if (isOnRing(pt)) {
+        const hour = pointToHour(pt, angleOffset)
+        setHoverHour(hour)
+
+        const nearEdge = findNearestEdge(pt, hour, events, angleOffset)
+        setHoveredEdge(
+          nearEdge ? { eventId: nearEdge.eventId, edge: nearEdge.edge } : null
+        )
+      } else {
+        setHoverHour(null)
+        setHoveredEdge(null)
+      }
+    },
+    [drag, resize, events, angleOffset]
+  )
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<SVGSVGElement>) => {
+      if (resize) {
+        if (resize.hasMoved) {
+          onEventTimeChange(resize.eventId, resize.previewStartH, resize.previewEndH)
+          setSettlingId(resize.eventId)
+          setTimeout(() => setSettlingId(null), 400)
+        }
+        setResize(null)
+        pointerStartRef.current = null
+        try { ;(e.target as SVGElement).releasePointerCapture(e.pointerId) } catch { /* */ }
+        return
+      }
+
+      if (drag) {
+        if (drag.hasMoved) {
+          onEventTimeChange(drag.eventId, drag.previewStartH, drag.previewEndH)
+          setSettlingId(drag.eventId)
+          setTimeout(() => setSettlingId(null), 400)
+        }
+        setDrag(null)
+        pointerStartRef.current = null
+        try { ;(e.target as SVGElement).releasePointerCapture(e.pointerId) } catch { /* */ }
+      }
+    },
+    [drag, resize, onEventTimeChange]
+  )
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      if (!svgRef.current) return
+      if (drag?.hasMoved || resize?.hasMoved) return
+
+      const pt = clientToSVG(svgRef.current, e.clientX, e.clientY)
+      if (!isOnRing(pt)) return
+
+      const hour = pointToHour(pt, angleOffset)
+      const nearEdge = findNearestEdge(pt, hour, events, angleOffset)
+      if (nearEdge) return
+
       const clickedEvent = events.find(
         (ev) => !ev.isPopping && hour >= ev.startH && hour < ev.endH
       )
@@ -113,60 +398,97 @@ export default function DayWheel({
         onGapClick(hour, e.clientX, e.clientY)
       }
     },
-    [events, onEventClick, onGapClick]
+    [events, onEventClick, onGapClick, drag, resize, angleOffset]
   )
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<SVGSVGElement>) => {
-      if (!svgRef.current) return
-      const pt = clientToSVG(svgRef.current, e.clientX, e.clientY)
-      if (isOnRing(pt)) {
-        setHoverHour(pointToHour(pt))
-      } else {
-        setHoverHour(null)
-      }
-    },
-    []
-  )
+  const handleMouseLeave = useCallback(() => {
+    if (!drag && !resize) {
+      setHoverHour(null)
+      setHoveredEdge(null)
+    }
+  }, [drag, resize])
 
-  const handleMouseLeave = useCallback(() => setHoverHour(null), [])
+  // ─── Cursor ──────────────────────────────────────────────────
+
+  let cursorClass = 'cursor-pointer'
+  if (isInteracting) cursorClass = 'cursor-grabbing'
+  else if (hoveredEdge) cursorClass = 'cursor-grab'
+
+  // ─── Render ──────────────────────────────────────────────────
 
   return (
     <svg
       ref={svgRef}
       viewBox={`0 0 ${WHEEL_SIZE} ${WHEEL_SIZE}`}
-      className="w-full max-w-[560px] aspect-square cursor-pointer"
+      className={`w-full max-w-[560px] aspect-square ${cursorClass}`}
       style={{ touchAction: 'none' }}
       onClick={handleClick}
-      onMouseMove={handleMouseMove}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       onMouseLeave={handleMouseLeave}
     >
-      {/* ─── Background ring ─── */}
-      <circle
-        cx={WHEEL_CENTER}
-        cy={WHEEL_CENTER}
-        r={RING_RADIUS}
+      {/* ─── Sleep arc (dimmer, thinner) ─── */}
+      <path
+        d={sleepArc}
+        fill="none"
+        stroke="rgba(0,0,0,0.025)"
+        strokeWidth={SLEEP_THICKNESS}
+        strokeLinecap="round"
+      />
+
+      {/* ─── Active arc (full thickness) ─── */}
+      <path
+        d={activeArc}
         fill="none"
         stroke="rgba(0,0,0,0.04)"
         strokeWidth={RING_THICKNESS}
+        strokeLinecap="round"
       />
 
       {/* ─── Event segments ─── */}
       {sorted.map((event) => {
-        const startAngle = hourToAngle(event.startH)
-        const endAngle = hourToAngle(event.endH)
-        const d = arcPath(WHEEL_CENTER, WHEEL_CENTER, RING_RADIUS, startAngle, endAngle)
-        const len = arcLength(event.startH, event.endH)
+        const isThisDragging = drag?.eventId === event.id && drag.hasMoved
+        const isThisResizing = resize?.eventId === event.id && resize.hasMoved
+        const isActive = isThisDragging || isThisResizing
+        const isSettling = settlingId === event.id
 
-        // Midpoint of the arc — used as transform origin for the pop
+        let startH = event.startH
+        let endH = event.endH
+        if (drag?.eventId === event.id) {
+          startH = drag.previewStartH
+          endH = drag.previewEndH
+        } else if (resize?.eventId === event.id) {
+          startH = resize.previewStartH
+          endH = resize.previewEndH
+        }
+
+        const startAngle = hourToAngle(startH, angleOffset)
+        const endAngle = hourToAngle(endH, angleOffset)
+        const d = arcPath(WHEEL_CENTER, WHEEL_CENTER, RING_RADIUS, startAngle, endAngle)
+        const len = arcLength(startH, endH)
+
         const midAngle = (startAngle + endAngle) / 2
         const midRad = degToRad(midAngle)
         const midX = WHEEL_CENTER + RING_RADIUS * Math.cos(midRad)
         const midY = WHEEL_CENTER + RING_RADIUS * Math.sin(midRad)
 
-        // Animation class: pop takes priority over spring-in
         const isPopping = event.isPopping
         const isNew = event.isNew && !isPopping
+        const isReceded = isInteracting && !isActive && !isPopping
+        const isHovered = hoverEventId === event.id
+
+        // Duration-aware text sizing
+        const duration = endH - startH
+        const titleSize = duration > 2 ? 14 : duration > 1 ? 12 : 10
+        const showInlineTime = duration > 0.75
+
+        let segmentClass = ''
+        if (isThisDragging) segmentClass = 'segment-dragging'
+        else if (isThisResizing) segmentClass = 'segment-resizing'
+        else if (isSettling) segmentClass = 'segment-settling'
+        else if (isReceded) segmentClass = 'segment-receded'
+        else if (isNew) segmentClass = 'animate-ring-pop'
 
         return (
           <g
@@ -186,73 +508,123 @@ export default function DayWheel({
               strokeWidth={RING_THICKNESS}
               strokeLinecap="round"
               opacity={0.85}
-              className={isNew ? 'animate-ring-pop' : ''}
-              style={
-                isNew
+              className={segmentClass}
+              style={{
+                ...(isNew
                   ? ({
                       strokeDasharray: len,
                       strokeDashoffset: 0,
                       '--arc-length': len,
                     } as React.CSSProperties)
-                  : undefined
-              }
+                  : {}),
+                ...(isActive
+                  ? ({ '--drag-color': event.color + '40' } as React.CSSProperties)
+                  : {}),
+              }}
             />
 
-            {/* Label — dissolves separately during pop */}
+            {/* Title — always visible */}
             <text
               x={midX}
-              y={midY}
+              y={showInlineTime ? midY - 5 : midY}
               textAnchor="middle"
               dominantBaseline="central"
               fill="white"
-              fontSize={event.endH - event.startH > 1.5 ? 14 : 11}
+              fontSize={titleSize}
               fontWeight="600"
-              opacity={0.9}
+              opacity={isReceded ? 0.5 : 0.9}
               className={`pointer-events-none select-none ${
                 isPopping ? 'animate-text-dissolve' : ''
               }`}
               style={
                 isPopping
                   ? { transformOrigin: `${midX}px ${midY}px` }
-                  : undefined
+                  : { transition: 'opacity 0.2s ease' }
               }
             >
-              {event.title.length > 12
-                ? event.title.slice(0, 10) + '…'
+              {event.title.length > (duration > 1.5 ? 14 : 8)
+                ? event.title.slice(0, duration > 1.5 ? 12 : 6) + '…'
                 : event.title}
             </text>
+
+            {/* Time range — always visible for segments > 45 min */}
+            {showInlineTime && !isPopping && (
+              <text
+                x={midX}
+                y={midY + (duration > 1.5 ? 10 : 7)}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="rgba(255,255,255,0.55)"
+                fontSize={isActive || isHovered ? 9 : 8}
+                fontFamily="monospace"
+                fontWeight="500"
+                opacity={isReceded ? 0.4 : isActive || isHovered ? 0.85 : 0.6}
+                className="pointer-events-none select-none"
+                style={{ transition: 'opacity 0.2s ease, font-size 0.15s ease' }}
+              >
+                {formatTime(startH, timeFormat)} – {formatTime(endH, timeFormat)}
+              </text>
+            )}
+
+            {/* Time pills at edges during drag */}
+            {isThisDragging && (
+              <>
+                <TimePill hour={startH} angle={startAngle} fmt={timeFormat} />
+                <TimePill hour={endH} angle={endAngle} fmt={timeFormat} />
+              </>
+            )}
+
+            {/* Moving-edge pill during resize */}
+            {isThisResizing && resize && (
+              <TimePill
+                hour={resize.edge === 'start' ? startH : endH}
+                angle={resize.edge === 'start' ? startAngle : endAngle}
+                fmt={timeFormat}
+              />
+            )}
           </g>
         )
       })}
 
       {/* ─── Boundary handles ─── */}
-      {handles.map((pos, i) => (
-        <circle
-          key={i}
-          cx={pos.x}
-          cy={pos.y}
-          r={HANDLE_RADIUS}
-          fill="white"
-          stroke="rgba(0,0,0,0.08)"
-          strokeWidth={1}
-          className="pointer-events-none"
-        />
-      ))}
+      {handles.map((h, i) => {
+        const isActiveHandle =
+          resize?.hasMoved && h.eventId === resize.eventId && h.edge === resize.edge
+        const isHovered =
+          !isInteracting && hoveredEdge?.eventId === h.eventId && hoveredEdge?.edge === h.edge
+        const event = events.find((e) => e.id === h.eventId)
 
-      {/* ─── Time markers ─── */}
-      {markers.map(({ h, x, y }) => (
+        return (
+          <circle
+            key={i}
+            cx={h.pos.x}
+            cy={h.pos.y}
+            r={HANDLE_RADIUS}
+            fill={isActiveHandle && event ? event.color : 'white'}
+            stroke={isActiveHandle ? 'white' : isHovered ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)'}
+            strokeWidth={isActiveHandle ? 2 : 1}
+            className={`pointer-events-none ${
+              isActiveHandle ? 'handle-active' : isHovered ? 'handle-hovered' : ''
+            }`}
+          />
+        )
+      })}
+
+      {/* ─── Hour markers ─── */}
+      {markers.map(({ h, x, y, isMajor }) => (
         <text
           key={h}
           x={x}
           y={y}
           textAnchor="middle"
           dominantBaseline="central"
-          fill="rgba(0,0,0,0.2)"
-          fontSize="11"
+          fill={isMajor ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.15)'}
+          fontSize={isMajor ? '11' : '9'}
           fontFamily="monospace"
+          fontWeight={isMajor ? '500' : '400'}
           className="pointer-events-none select-none"
         >
-          {formatTimeShort(h)}
+          {formatMarker(h, timeFormat)}
         </text>
       ))}
 
@@ -277,8 +649,8 @@ export default function DayWheel({
         className="animate-soft-pulse pointer-events-none"
       />
 
-      {/* ─── Hover preview ─── */}
-      {hoverPos && hoverInGap && (
+      {/* ─── Hover preview (gap click) ─── */}
+      {!isInteracting && !hoveredEdge && hoverPos && hoverInGap && (
         <g className="pointer-events-none">
           <circle
             cx={hoverPos.x}
@@ -304,5 +676,36 @@ export default function DayWheel({
         </g>
       )}
     </svg>
+  )
+}
+
+// ─── Time pill ──────────────────────────────────────────────────
+
+function TimePill({ hour, angle, fmt }: { hour: number; angle: number; fmt: TimeFormat }) {
+  const r = RING_RADIUS - RING_THICKNESS / 2 - 22
+  const rad = degToRad(angle)
+  const x = WHEEL_CENTER + r * Math.cos(rad)
+  const y = WHEEL_CENTER + r * Math.sin(rad)
+
+  return (
+    <g
+      className="time-label-pill pointer-events-none"
+      style={{ transformOrigin: `${x}px ${y}px` }}
+    >
+      <rect x={x - 26} y={y - 9} width={52} height={18} rx={9} fill="rgba(0,0,0,0.65)" />
+      <text
+        x={x}
+        y={y}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="white"
+        fontSize="9"
+        fontWeight="600"
+        fontFamily="monospace"
+        className="select-none"
+      >
+        {formatTime(hour, fmt)}
+      </text>
+    </g>
   )
 }

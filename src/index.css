@@ -99,37 +99,27 @@ body {
   animation: soft-pulse 2.5s ease-in-out infinite;
 }
 
-/*
- * Bubble-pop destruction: the segment inflates (tension),
- * then bursts and falls downward (gravity). Fast, playful, submissive —
- * the event happily yields its space on the ring.
- */
+/* ─── Bubble-pop destruction ─── */
+
 @keyframes bubble-pop {
   0% {
     transform: scale(1) translateY(0);
     opacity: 0.85;
   }
   15% {
-    /* Inflate — tension, the bubble stretching right before the burst */
     transform: scale(1.18) translateY(0);
     opacity: 1;
   }
   40% {
-    /* POP — rapid collapse, the satisfying moment */
     transform: scale(0.12) translateY(16px);
     opacity: 0.25;
   }
   100% {
-    /* Gravity — remnants drift off-screen */
     transform: scale(0) translateY(70px);
     opacity: 0;
   }
 }
 
-/*
- * Text dissolves separately: faster than the pop,
- * fading and blurring away like smoke from a popped bubble.
- */
 @keyframes text-dissolve {
   0% {
     opacity: 0.9;
@@ -149,6 +139,91 @@ body {
 
 .animate-text-dissolve {
   animation: text-dissolve 0.28s ease-out forwards;
+}
+
+/* ─── Drag / resize states ─── */
+
+@keyframes drag-lift {
+  0% { stroke-width: 80; filter: none; }
+  100% { stroke-width: 88; filter: drop-shadow(0 0 12px var(--drag-color, rgba(0,0,0,0.15))); }
+}
+
+.segment-dragging,
+.segment-resizing {
+  animation: drag-lift 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 1 !important;
+}
+
+.segment-receded {
+  opacity: 0.35 !important;
+  transition: opacity 0.3s ease;
+}
+
+@keyframes label-appear {
+  0% { opacity: 0; transform: scale(0.7); }
+  60% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.time-label-pill {
+  animation: label-appear 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes drag-settle {
+  0% { stroke-width: 88; }
+  50% { stroke-width: 76; }
+  100% { stroke-width: 80; }
+}
+
+.segment-settling {
+  animation: drag-settle 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ─── Handle states ─── */
+
+@keyframes handle-grow {
+  0% { r: 6; }
+  60% { r: 12; }
+  100% { r: 10; }
+}
+
+.handle-active {
+  animation: handle-grow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes handle-hint {
+  0% { r: 6; }
+  100% { r: 9; }
+}
+
+.handle-hovered {
+  animation: handle-hint 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ─── Settings bottom sheet ─── */
+
+@keyframes sheet-up {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes sheet-backdrop {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.settings-backdrop {
+  animation: sheet-backdrop 0.25s ease forwards;
+}
+
+.settings-sheet {
+  animation: sheet-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 /* Subtle noise texture overlay */

@@ -7,50 +7,54 @@ import {
   RING_THICKNESS,
   RING_HIT_PADDING,
   DEFAULT_EVENT_DURATION,
+  MIN_EVENT_DURATION,
 } from './constants'
-import type { CalendarEvent, Position, TimeGap } from './types'
+import type { CalendarEvent, Position, TimeGap, TimeFormat } from './types'
+
+// ─── Dynamic rotation offset ─────────────────────────────────────
+
+/**
+ * Compute the angle offset that centers the active window on the ring.
+ * The midpoint of the active hours maps to 90° (bottom / 6-o'clock).
+ */
+export function computeAngleOffset(activeStart: number, activeEnd: number): number {
+  let activeMid: number
+  if (activeEnd > activeStart) {
+    activeMid = (activeStart + activeEnd) / 2
+  } else {
+    // Wraps through midnight (e.g. active 7 AM → midnight)
+    const duration = (24 - activeStart) + activeEnd
+    activeMid = (activeStart + duration / 2) % 24
+  }
+  return 180 - (activeMid / TOTAL_HOURS) * 360
+}
 
 // ─── Angle / position helpers ────────────────────────────────────
 
-/**
- * Hour → angle in degrees. 12 o'clock (top) = -90° in SVG.
- */
-export function hourToAngle(hour: number): number {
-  const fraction = (hour - START_OF_DAY) / TOTAL_HOURS
-  return fraction * 360 - 90
+export function hourToAngle(hour: number, offset = 0): number {
+  return (hour / TOTAL_HOURS) * 360 - 90 + offset
 }
 
-/**
- * Angle (degrees, SVG convention) → hour float.
- */
-export function angleToHour(angleDeg: number): number {
-  // Normalize: SVG 0° is 3 o'clock, we offset by +90 so top = 0
-  let norm = (angleDeg + 90) % 360
+export function angleToHour(angleDeg: number, offset = 0): number {
+  let norm = (angleDeg - offset + 90) % 360
   if (norm < 0) norm += 360
-  const hour = START_OF_DAY + (norm / 360) * TOTAL_HOURS
-  return Math.max(START_OF_DAY, Math.min(END_OF_DAY, hour))
+  return (norm / 360) * TOTAL_HOURS
 }
 
 export function degToRad(deg: number): number {
   return (deg * Math.PI) / 180
 }
 
-/**
- * Hour → {x,y} on the ring center-line.
- */
-export function hourToPosition(hour: number): Position {
-  const rad = degToRad(hourToAngle(hour))
+export function hourToPosition(hour: number, offset = 0): Position {
+  const rad = degToRad(hourToAngle(hour, offset))
   return {
     x: WHEEL_CENTER + RING_RADIUS * Math.cos(rad),
     y: WHEEL_CENTER + RING_RADIUS * Math.sin(rad),
   }
 }
 
-// ─── SVG arc path (single-line arc for thick strokes) ────────────
+// ─── SVG arc path ────────────────────────────────────────────────
 
-/**
- * Arc path along a circle — used with thick strokeWidth for ring segments.
- */
 export function arcPath(
   cx: number,
   cy: number,
@@ -65,9 +69,6 @@ export function arcPath(
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${end.x} ${end.y}`
 }
 
-/**
- * Compute the visual arc length (in SVG units) for an event.
- */
 export function arcLength(startH: number, endH: number): number {
   const sweep = ((endH - startH) / TOTAL_HOURS) * 360
   return degToRad(sweep) * RING_RADIUS
@@ -92,9 +93,6 @@ export function clientToSVG(svg: SVGSVGElement, clientX: number, clientY: number
 
 // ─── Ring hit testing ────────────────────────────────────────────
 
-/**
- * Check if a point (in SVG coords) is within the clickable ring area.
- */
 export function isOnRing(pt: Position): boolean {
   const dx = pt.x - WHEEL_CENTER
   const dy = pt.y - WHEEL_CENTER
@@ -104,27 +102,20 @@ export function isOnRing(pt: Position): boolean {
   return dist >= inner && dist <= outer
 }
 
-/**
- * Convert a point on/near the ring to an hour.
- */
-export function pointToHour(pt: Position): number {
+export function pointToHour(pt: Position, offset = 0): number {
   const dx = pt.x - WHEEL_CENTER
   const dy = pt.y - WHEEL_CENTER
   const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI
-  return angleToHour(angleDeg)
+  return angleToHour(angleDeg, offset)
 }
 
 // ─── Gap detection ───────────────────────────────────────────────
 
-/**
- * Find the open time gap at the given hour, or null if an event is there.
- */
 export function findGapAtTime(events: CalendarEvent[], time: number): TimeGap | null {
-  // Is there already an event here?
-  const existing = events.find((e) => time >= e.startH && time < e.endH)
+  const existing = events.find((e) => !e.isPopping && time >= e.startH && time < e.endH)
   if (existing) return null
 
-  const sorted = [...events].sort((a, b) => a.startH - b.startH)
+  const sorted = [...events].filter((e) => !e.isPopping).sort((a, b) => a.startH - b.startH)
   let gapStart = START_OF_DAY
   let gapEnd = END_OF_DAY
 
@@ -141,17 +132,12 @@ export function findGapAtTime(events: CalendarEvent[], time: number): TimeGap | 
   return { start: gapStart, end: gapEnd }
 }
 
-/**
- * Compute a sensible default start/end for a new event at the clicked time,
- * clamped within the available gap.
- */
 export function defaultEventTimes(
   clickedHour: number,
   gap: TimeGap
 ): { startH: number; endH: number } {
   const half = DEFAULT_EVENT_DURATION / 2
 
-  // Try to center around click, clamped to gap
   let startH = Math.max(gap.start, clickedHour - half)
   let endH = startH + DEFAULT_EVENT_DURATION
 
@@ -160,10 +146,8 @@ export function defaultEventTimes(
     startH = Math.max(gap.start, endH - DEFAULT_EVENT_DURATION)
   }
 
-  // Round to nearest 15 min
   startH = Math.round(startH * 4) / 4
   endH = Math.round(endH * 4) / 4
-
   if (endH - startH < 0.25) endH = startH + 0.25
 
   return { startH, endH }
@@ -171,20 +155,28 @@ export function defaultEventTimes(
 
 // ─── Formatting ──────────────────────────────────────────────────
 
-export function formatTime(hour: number): string {
-  const h = Math.floor(hour)
-  const m = Math.round((hour - h) * 60)
+export function formatTime(hour: number, format: TimeFormat = '24h'): string {
+  const h = Math.floor(hour) % 24
+  const m = Math.round((hour - Math.floor(hour)) * 60)
+
+  if (format === '24h') {
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+  }
+
   const period = h >= 12 ? 'PM' : 'AM'
   const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${displayH}:${m.toString().padStart(2, '0')} ${period}`
 }
 
-export function formatTimeShort(hour: number): string {
-  const h = Math.floor(hour)
-  const m = Math.round((hour - h) * 60)
+/** Compact format for ring hour markers */
+export function formatMarker(hour: number, format: TimeFormat = '24h'): string {
+  const h = Math.floor(hour) % 24
+  if (format === '24h') {
+    return h.toString().padStart(2, '0')
+  }
+  const period = h >= 12 ? 'p' : 'a'
   const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h
-  if (m === 0) return `${displayH}`
-  return `${displayH}:${m.toString().padStart(2, '0')}`
+  return `${displayH}${period}`
 }
 
 export function formatCountdown(minutes: number): string {
@@ -201,4 +193,72 @@ export function generateId(): string {
 
 export function getActiveEvent(events: CalendarEvent[], currentTime: number): CalendarEvent | null {
   return events.find((e) => currentTime >= e.startH && currentTime < e.endH) ?? null
+}
+
+// ─── Drag helpers ────────────────────────────────────────────────
+
+export function snapToQuarter(hour: number): number {
+  return Math.round(hour * 4) / 4
+}
+
+export function getDragBounds(
+  eventId: string,
+  events: CalendarEvent[]
+): { minStart: number; maxStart: number; duration: number } {
+  const event = events.find((e) => e.id === eventId)!
+  const duration = event.endH - event.startH
+  const others = events
+    .filter((e) => e.id !== eventId && !e.isPopping)
+    .sort((a, b) => a.startH - b.startH)
+
+  let minStart = START_OF_DAY
+  for (const o of others) {
+    if (o.endH <= event.startH) minStart = o.endH
+  }
+
+  let maxEnd = END_OF_DAY
+  for (const o of others) {
+    if (o.startH >= event.endH) {
+      maxEnd = o.startH
+      break
+    }
+  }
+
+  return { minStart, maxStart: maxEnd - duration, duration }
+}
+
+export function getResizeBounds(
+  eventId: string,
+  edge: 'start' | 'end',
+  events: CalendarEvent[]
+): { fixedHour: number; minHour: number; maxHour: number } {
+  const event = events.find((e) => e.id === eventId)!
+  const others = events
+    .filter((e) => e.id !== eventId && !e.isPopping)
+    .sort((a, b) => a.startH - b.startH)
+
+  if (edge === 'start') {
+    let min = START_OF_DAY
+    for (const o of others) {
+      if (o.endH <= event.startH) min = o.endH
+    }
+    return {
+      fixedHour: event.endH,
+      minHour: min,
+      maxHour: event.endH - MIN_EVENT_DURATION,
+    }
+  } else {
+    let max = END_OF_DAY
+    for (const o of others) {
+      if (o.startH >= event.endH) {
+        max = o.startH
+        break
+      }
+    }
+    return {
+      fixedHour: event.startH,
+      minHour: event.startH + MIN_EVENT_DURATION,
+      maxHour: max,
+    }
+  }
 }
