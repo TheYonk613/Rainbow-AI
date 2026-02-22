@@ -1,0 +1,600 @@
+:root {
+    --bg-color: #F8F8FA;
+    --card-bg: #FFFFFF;
+    --text-primary: #1D1D1F;
+    --text-secondary: #86868B;
+    --text-tertiary: #B0B0B8;
+    --accent-gradient: linear-gradient(135deg, #FF1493 0%, #7F00FF 100%);
+    --accent-pink: #FF1493;
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-hero:
+        0 20px 40px rgba(127, 0, 255, 0.25),
+        0 8px 16px rgba(0, 0, 0, 0.1);
+    --radius: 12px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #F9A8D4 0%, #C4B5FD 50%, #A78BFA 100%);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+}
+
+/* ========================================
+   APP SHELL
+   ======================================== */
+.app-shell {
+    max-width: 1500px;
+    width: 100%;
+    max-height: calc(100vh - 48px);
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 24px;
+    padding: 28px 36px;
+    overflow: hidden;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.08),
+        0 4px 12px rgba(0, 0, 0, 0.04);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+}
+
+/* ========================================
+   TOP NAV
+   ======================================== */
+.top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.month-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+}
+
+.nav-arrows {
+    display: flex;
+    gap: 4px;
+}
+
+.arrow-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid #E5E7EB;
+    background: white;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    transition: all 0.15s;
+}
+
+.arrow-btn:hover {
+    background: #F3F4F6;
+}
+
+.view-toggle {
+    display: flex;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    overflow: hidden;
+    background: white;
+}
+
+.toggle-btn {
+    padding: 7px 14px;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+}
+
+.toggle-btn.active {
+    background: var(--text-primary);
+    color: white;
+}
+
+/* ========================================
+   SUB HEADER
+   ======================================== */
+.sub-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-top: 4px;
+    flex-shrink: 0;
+}
+
+.sub-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.day-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.greeting {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.event-count {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding-top: 4px;
+}
+
+/* ========================================
+   LANE LABELS (Earlier / Now / Later)
+   ======================================== */
+.lane-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 0 8px;
+    flex-shrink: 0;
+}
+
+.lane-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.label-icon {
+    font-size: 9px;
+}
+
+.label-earlier {
+    flex: 1;
+}
+
+.label-now {
+    flex: 0;
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
+.label-later {
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.now-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent-pink);
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(255, 20, 147, 0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 3px rgba(255, 20, 147, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(255, 20, 147, 0.08);
+    }
+}
+
+/* ========================================
+   THE UNIFIED TIMELINE LANE
+   ======================================== */
+.timeline-lane {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    padding: 8px 0;
+}
+
+/* Full-width Track Line */
+.track-line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #E5E7EB 0%, #E5E7EB 30%, var(--accent-pink) 30%, var(--accent-pink) 55%, #E5E7EB 55%);
+    opacity: 0.3;
+    z-index: 0;
+}
+
+/* ========================================
+   PAST: Tight Overlapping Chips
+   ======================================== */
+.past-cluster {
+    display: flex;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    margin-right: 0;
+}
+
+.past-chip {
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: var(--shadow-soft);
+    padding: 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    width: 110px;
+    height: 100%;
+    min-height: 0;
+    transition: all 0.2s;
+    cursor: default;
+    justify-content: center;
+}
+
+/* Tight overlap via negative margin */
+.past-chip+.past-chip {
+    margin-left: -45px;
+}
+
+.past-chip:hover {
+    z-index: 10;
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.chip-time {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+}
+
+.chip-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+/* Stacking z-index: most recent on top */
+.chip-1 {
+    z-index: 1;
+    opacity: 0.5;
+}
+
+.chip-2 {
+    z-index: 2;
+    opacity: 0.7;
+}
+
+.chip-3 {
+    z-index: 3;
+    opacity: 1;
+}
+
+/* ========================================
+   GAP INDICATORS (Connectors in the lane)
+   ======================================== */
+.lane-gap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    flex-shrink: 0;
+    z-index: 1;
+}
+
+.gap-pill {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-pink);
+    background: rgba(255, 20, 147, 0.06);
+    padding: 4px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px dashed rgba(255, 20, 147, 0.15);
+}
+
+.gap-pill:hover {
+    background: rgba(255, 20, 147, 0.12);
+    border-color: rgba(255, 20, 147, 0.3);
+    transform: scale(1.05);
+}
+
+/* ========================================
+   HERO CARD (Center of the lane)
+   ======================================== */
+.hero-card {
+    background: var(--accent-gradient);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-hero);
+    color: white;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    min-width: 300px;
+    max-width: 340px;
+    height: 100%;
+    max-height: 420px;
+    flex-shrink: 0;
+    z-index: 5;
+}
+
+.hero-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.hero-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.hero-edit-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.hero-edit-btn:hover {
+    opacity: 1;
+}
+
+.hero-main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.hero-date {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: 4px;
+}
+
+.hero-time {
+    font-size: 52px;
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -2px;
+    margin-bottom: 12px;
+}
+
+.hero-title {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 6px;
+}
+
+.hero-desc {
+    font-size: 12px;
+    opacity: 0.8;
+    line-height: 1.4;
+}
+
+.hero-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 12px;
+    margin-top: 12px;
+}
+
+.hero-end-time {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.75;
+}
+
+/* ========================================
+   FUTURE CARDS (Spread out, clear)
+   ======================================== */
+.future-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 155px;
+    height: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    flex-shrink: 0;
+    z-index: 1;
+    transition: all 0.2s;
+}
+
+.future-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+.future-time {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-pink);
+    background: rgba(255, 20, 147, 0.06);
+    padding: 3px 8px;
+    border-radius: 6px;
+    align-self: flex-start;
+    margin-bottom: 4px;
+}
+
+.future-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.future-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: auto;
+}
+
+.future-tag {
+    align-self: flex-start;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    background: #F3F4F6;
+    color: #4B5563;
+}
+
+.tag-personal {
+    background: #EFF6FF;
+    color: #2563EB;
+}
+
+/* Distant future card */
+.future-distant {
+    opacity: 0.6;
+    filter: blur(0.5px);
+}
+
+.future-distant:hover {
+    opacity: 1;
+    filter: none;
+}
+
+/* ========================================
+   FAB
+   ======================================== */
+.fab-container {
+    position: fixed;
+    bottom: 28px;
+    right: 36px;
+    z-index: 100;
+}
+
+.create-event-fab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #FF0080 0%, #7928CA 100%);
+    border-radius: 50px;
+    color: white;
+    border: none;
+    box-shadow: 0 8px 20px rgba(121, 40, 202, 0.4);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    font-family: 'Inter', sans-serif;
+}
+
+.create-event-fab:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(121, 40, 202, 0.5);
+}
+
+.fab-icon {
+    font-size: 16px;
+}
+
+.fab-text {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* ========================================
+   ORBIT MODE BUTTON
+   ======================================== */
+.orbit-mode-btn {
+    position: fixed;
+    bottom: 28px;
+    left: 36px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 50px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    color: #86868B;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.orbit-mode-btn:hover {
+    color: #1D1D1F;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}

@@ -162,6 +162,18 @@ export default function App() {
         click to create · drag to move · pull edges to resize
       </footer>
 
+      {/* Card Mode — bottom left */}
+      <a
+        href="/mockup.html"
+        className="fixed bottom-6 left-6 h-10 px-4 rounded-full bg-white/80 backdrop-blur shadow-lg shadow-black/5 border border-gray-100 flex items-center gap-2 text-gray-400 hover:text-gray-600 hover:scale-105 transition-all active:scale-95 z-30 no-underline text-xs font-semibold tracking-wide"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="20" height="18" rx="3" />
+          <path d="M2 9h20" />
+        </svg>
+        Card Mode
+      </a>
+
       {/* Settings gear — bottom right */}
       <button
         onClick={() => setShowSettings(true)}
