@@ -28,17 +28,21 @@ body {
     opacity: 0;
     filter: blur(6px);
   }
+
   35% {
     stroke-dashoffset: -8;
     opacity: 1;
     filter: blur(0);
   }
+
   55% {
     stroke-dashoffset: 4;
   }
+
   75% {
     stroke-dashoffset: -1;
   }
+
   100% {
     stroke-dashoffset: 0;
     opacity: 1;
@@ -51,16 +55,20 @@ body {
     transform: scale(0);
     opacity: 0;
   }
+
   50% {
     transform: scale(1.12);
     opacity: 1;
   }
+
   70% {
     transform: scale(0.95);
   }
+
   85% {
     transform: scale(1.03);
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -72,6 +80,7 @@ body {
     transform: translateY(8px);
     opacity: 0;
   }
+
   100% {
     transform: translateY(0);
     opacity: 1;
@@ -79,8 +88,15 @@ body {
 }
 
 @keyframes soft-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .animate-ring-pop {
@@ -106,14 +122,17 @@ body {
     transform: scale(1) translateY(0);
     opacity: 0.85;
   }
+
   15% {
     transform: scale(1.18) translateY(0);
     opacity: 1;
   }
+
   40% {
     transform: scale(0.12) translateY(16px);
     opacity: 0.25;
   }
+
   100% {
     transform: scale(0) translateY(70px);
     opacity: 0;
@@ -126,6 +145,7 @@ body {
     transform: translateY(0);
     filter: blur(0);
   }
+
   100% {
     opacity: 0;
     transform: translateY(14px);
@@ -144,8 +164,15 @@ body {
 /* ─── Drag / resize states ─── */
 
 @keyframes drag-lift {
-  0% { stroke-width: 80; filter: none; }
-  100% { stroke-width: 88; filter: drop-shadow(0 0 12px var(--drag-color, rgba(0,0,0,0.15))); }
+  0% {
+    stroke-width: 80;
+    filter: none;
+  }
+
+  100% {
+    stroke-width: 88;
+    filter: drop-shadow(0 0 12px var(--drag-color, rgba(0, 0, 0, 0.15)));
+  }
 }
 
 .segment-dragging,
@@ -160,9 +187,20 @@ body {
 }
 
 @keyframes label-appear {
-  0% { opacity: 0; transform: scale(0.7); }
-  60% { opacity: 1; transform: scale(1.06); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .time-label-pill {
@@ -170,9 +208,17 @@ body {
 }
 
 @keyframes drag-settle {
-  0% { stroke-width: 88; }
-  50% { stroke-width: 76; }
-  100% { stroke-width: 80; }
+  0% {
+    stroke-width: 88;
+  }
+
+  50% {
+    stroke-width: 76;
+  }
+
+  100% {
+    stroke-width: 80;
+  }
 }
 
 .segment-settling {
@@ -182,9 +228,17 @@ body {
 /* ─── Handle states ─── */
 
 @keyframes handle-grow {
-  0% { r: 6; }
-  60% { r: 12; }
-  100% { r: 10; }
+  0% {
+    r: 6;
+  }
+
+  60% {
+    r: 12;
+  }
+
+  100% {
+    r: 10;
+  }
 }
 
 .handle-active {
@@ -192,8 +246,13 @@ body {
 }
 
 @keyframes handle-hint {
-  0% { r: 6; }
-  100% { r: 9; }
+  0% {
+    r: 6;
+  }
+
+  100% {
+    r: 9;
+  }
 }
 
 .handle-hovered {
@@ -207,6 +266,7 @@ body {
     transform: translateY(100%);
     opacity: 0;
   }
+
   100% {
     transform: translateY(0);
     opacity: 1;
@@ -214,8 +274,13 @@ body {
 }
 
 @keyframes sheet-backdrop {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 .settings-backdrop {
@@ -224,6 +289,88 @@ body {
 
 .settings-sheet {
   animation: sheet-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ─── Balloon animations ─── */
+
+@keyframes balloon-rise {
+  0% {
+    transform: translateY(60px) scale(0.3);
+    opacity: 0;
+  }
+
+  40% {
+    opacity: 1;
+  }
+
+  70% {
+    transform: translateY(-12px) scale(1.06);
+  }
+
+  85% {
+    transform: translateY(4px) scale(0.97);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes balloon-sway {
+  0% {
+    transform: rotate(-3deg) translateX(-2px) translateY(0px);
+  }
+
+  25% {
+    transform: rotate(1deg) translateX(3px) translateY(-3px);
+  }
+
+  50% {
+    transform: rotate(3.5deg) translateX(1px) translateY(1px);
+  }
+
+  75% {
+    transform: rotate(-1deg) translateX(-3px) translateY(-2px);
+  }
+
+  100% {
+    transform: rotate(-3deg) translateX(-2px) translateY(0px);
+  }
+}
+
+@keyframes modal-circle-in {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+
+  70% {
+    transform: scale(0.97);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-balloon-rise {
+  animation: balloon-rise 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-balloon-sway {
+  animation: balloon-sway ease-in-out infinite;
+  /* duration set per-element via inline style for variation */
+}
+
+.animate-modal-circle-in {
+  animation: modal-circle-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 /* Subtle noise texture overlay */
