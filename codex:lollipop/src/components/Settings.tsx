@@ -6,9 +6,11 @@ interface SettingsProps {
   activeStart: number
   activeEnd: number
   timeFormat: TimeFormat
+  allowOverlap: boolean
   onActiveStartChange: (h: number) => void
   onActiveEndChange: (h: number) => void
   onTimeFormatChange: (f: TimeFormat) => void
+  onAllowOverlapChange: (v: boolean) => void
   onClose: () => void
 }
 
@@ -26,9 +28,11 @@ export default function Settings({
   activeStart,
   activeEnd,
   timeFormat,
+  allowOverlap,
   onActiveStartChange,
   onActiveEndChange,
   onTimeFormatChange,
+  onAllowOverlapChange,
   onClose,
 }: SettingsProps) {
   useEffect(() => {
@@ -211,6 +215,34 @@ export default function Settings({
               </div>
             </div>
 
+            {/* Bubble overlap toggle */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                Bubble Behaviour
+              </label>
+              <div
+                className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-xl cursor-pointer"
+                onClick={() => onAllowOverlapChange(!allowOverlap)}
+              >
+                <div>
+                  <div className="text-sm font-medium text-gray-700">Allow overlap</div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {allowOverlap ? 'Bubbles can freely cross each other' : 'Bubbles snap to their neighbours'}
+                  </div>
+                </div>
+                {/* Toggle pill */}
+                <div
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${allowOverlap ? 'bg-gray-800' : 'bg-gray-200'
+                    }`}
+                >
+                  <div
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${allowOverlap ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Time format toggle */}
             <div className="space-y-3">
               <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -219,21 +251,19 @@ export default function Settings({
               <div className="flex gap-2">
                 <button
                   onClick={() => onTimeFormatChange('24h')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium font-mono transition-all ${
-                    timeFormat === '24h'
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium font-mono transition-all ${timeFormat === '24h'
                       ? 'bg-gray-800 text-white'
                       : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   24h
                 </button>
                 <button
                   onClick={() => onTimeFormatChange('12h')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium font-mono transition-all ${
-                    timeFormat === '12h'
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium font-mono transition-all ${timeFormat === '12h'
                       ? 'bg-gray-800 text-white'
                       : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   12h
                 </button>

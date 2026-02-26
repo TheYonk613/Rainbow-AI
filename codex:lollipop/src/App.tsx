@@ -5,7 +5,9 @@ import { useCurrentTime } from './hooks/useCurrentTime'
 import { defaultEventTimes, findGapAtTime } from './utils'
 import DayWheel from './components/DayWheel'
 import DeleteConfirm from './components/DeleteConfirm'
+import EventActionMenu from './components/EventActionMenu'
 import EventCreator from './components/EventCreator'
+import EventEditor from './components/EventEditor'
 import Settings from './components/Settings'
 
 const STORAGE_KEY = 'ra1nbow-settings'
@@ -15,6 +17,7 @@ interface PersistedSettings {
   activeStart: number
   activeEnd: number
   timeFormat: TimeFormat
+  allowOverlap: boolean
 }
 
 function loadSettings(): PersistedSettings {
@@ -26,6 +29,7 @@ function loadSettings(): PersistedSettings {
         activeStart: parsed.activeStart ?? DEFAULT_ACTIVE_START,
         activeEnd: parsed.activeEnd ?? DEFAULT_ACTIVE_END,
         timeFormat: parsed.timeFormat ?? '24h',
+        allowOverlap: parsed.allowOverlap ?? false,
       }
     }
   } catch {
@@ -36,6 +40,7 @@ function loadSettings(): PersistedSettings {
     activeStart: DEFAULT_ACTIVE_START,
     activeEnd: DEFAULT_ACTIVE_END,
     timeFormat: '24h',
+    allowOverlap: false,
   }
 }
 
@@ -51,6 +56,12 @@ export default function App() {
     anchorY: number
   } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null)
+  const [actionTarget, setActionTarget] = useState<{
+    event: CalendarEvent
+    anchorX: number
+    anchorY: number
+  } | null>(null)
+  const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
@@ -66,6 +77,10 @@ export default function App() {
 
   const handleTimeFormatChange = useCallback((f: TimeFormat) => {
     setSettings((prev) => ({ ...prev, timeFormat: f }))
+  }, [])
+
+  const handleAllowOverlapChange = useCallback((v: boolean) => {
+    setSettings((prev) => ({ ...prev, allowOverlap: v }))
   }, [])
 
   const handleGapClick = useCallback(
@@ -89,8 +104,8 @@ export default function App() {
 
   const handleCancelCreate = useCallback(() => setCreator(null), [])
 
-  const handleEventClick = useCallback((event: CalendarEvent) => {
-    setDeleteTarget(event)
+  const handleEventClick = useCallback((event: CalendarEvent, clientX: number, clientY: number) => {
+    setActionTarget({ event, anchorX: clientX, anchorY: clientY })
   }, [])
 
   const handleConfirmDelete = useCallback(() => {
@@ -111,6 +126,19 @@ export default function App() {
   const handleEventTimeChange = useCallback((id: string, startH: number, endH: number) => {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, startH, endH } : e)))
   }, [])
+
+  const handleRenameEvent = useCallback((id: string, newTitle: string) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, title: newTitle } : e)))
+    setEditTarget(null)
+  }, [])
+
+  const handleColorChange = useCallback((id: string, color: string) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, color } : e)))
+    // Also update the action menu's own event reference so wheel + header reflect new color live
+    setActionTarget((prev) =>
+      prev && prev.event.id === id ? { ...prev, event: { ...prev.event, color } } : prev
+    )
+  }, [])
   return (
     <div className="min-h-screen bg-[#f7f6f3] bg-noise flex flex-col">
       <header className="flex items-center justify-center pt-8 pb-2">
@@ -128,6 +156,7 @@ export default function App() {
             activeStart={settings.activeStart}
             activeEnd={settings.activeEnd}
             timeFormat={settings.timeFormat}
+            allowOverlap={settings.allowOverlap}
             onGapClick={handleGapClick}
             onEventClick={handleEventClick}
             onEventTimeChange={handleEventTimeChange}
@@ -171,6 +200,27 @@ export default function App() {
         />
       )}
 
+      {actionTarget && (
+        <EventActionMenu
+          event={actionTarget.event}
+          anchorX={actionTarget.anchorX}
+          anchorY={actionTarget.anchorY}
+          timeFormat={settings.timeFormat}
+          onColorChange={handleColorChange}
+          onEdit={(event) => setEditTarget(event)}
+          onDelete={(event) => setDeleteTarget(event)}
+          onClose={() => setActionTarget(null)}
+        />
+      )}
+
+      {editTarget && (
+        <EventEditor
+          event={editTarget}
+          onSave={handleRenameEvent}
+          onCancel={() => setEditTarget(null)}
+        />
+      )}
+
       {deleteTarget && (
         <DeleteConfirm
           event={deleteTarget}
@@ -184,9 +234,11 @@ export default function App() {
           activeStart={settings.activeStart}
           activeEnd={settings.activeEnd}
           timeFormat={settings.timeFormat}
+          allowOverlap={settings.allowOverlap}
           onActiveStartChange={handleActiveStartChange}
           onActiveEndChange={handleActiveEndChange}
           onTimeFormatChange={handleTimeFormatChange}
+          onAllowOverlapChange={handleAllowOverlapChange}
           onClose={() => setShowSettings(false)}
         />
       )}
