@@ -1,25 +1,18 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { CalendarEvent, TimeFormat } from './types'
-import {
-  SAMPLE_EVENTS,
-  DEFAULT_ACTIVE_START,
-  DEFAULT_ACTIVE_END,
-} from './constants'
+<<<<<<< ours
+import { DEFAULT_ACTIVE_END, DEFAULT_ACTIVE_START, SAMPLE_EVENTS } from './constants'
+import OrbitCalendar from './components/OrbitCalendar'
+=======
+import { SAMPLE_EVENTS, DEFAULT_ACTIVE_START, DEFAULT_ACTIVE_END } from './constants'
 import { useCurrentTime } from './hooks/useCurrentTime'
 import { findGapAtTime, defaultEventTimes } from './utils'
 import DayWheel from './components/DayWheel'
 import EventCreator from './components/EventCreator'
 import DeleteConfirm from './components/DeleteConfirm'
+>>>>>>> theirs
 import Settings from './components/Settings'
 
-interface CreatorState {
-  startH: number
-  endH: number
-  anchorX: number
-  anchorY: number
-}
-
-const POP_DURATION_MS = 560
 const STORAGE_KEY = 'ra1nbow-settings'
 
 interface PersistedSettings {
@@ -39,7 +32,10 @@ function loadSettings(): PersistedSettings {
         timeFormat: parsed.timeFormat ?? '24h',
       }
     }
-  } catch { /* corrupted storage */ }
+  } catch {
+    // ignore corrupted storage
+  }
+
   return {
     activeStart: DEFAULT_ACTIVE_START,
     activeEnd: DEFAULT_ACTIVE_END,
@@ -48,14 +44,13 @@ function loadSettings(): PersistedSettings {
 }
 
 export default function App() {
-  const [events, setEvents] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
-  const [creator, setCreator] = useState<CreatorState | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null)
+  const [events] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
   const [showSettings, setShowSettings] = useState(false)
+<<<<<<< ours
+=======
   const currentTime = useCurrentTime()
 
-  // ─── Persisted settings ────────────────────────────────────────
-
+>>>>>>> theirs
   const [settings, setSettings] = useState<PersistedSettings>(loadSettings)
 
   useEffect(() => {
@@ -74,8 +69,8 @@ export default function App() {
     setSettings((prev) => ({ ...prev, timeFormat: f }))
   }, [])
 
-  // ─── Gap click → create ──────────────────────────────────────
-
+<<<<<<< ours
+=======
   const handleGapClick = useCallback(
     (hour: number, clientX: number, clientY: number) => {
       const gap = findGapAtTime(events, hour)
@@ -89,16 +84,13 @@ export default function App() {
   const handleCreateEvent = useCallback((event: CalendarEvent) => {
     setEvents((prev) => [...prev, event])
     setCreator(null)
+
     setTimeout(() => {
-      setEvents((prev) =>
-        prev.map((e) => (e.id === event.id ? { ...e, isNew: false } : e))
-      )
+      setEvents((prev) => prev.map((e) => (e.id === event.id ? { ...e, isNew: false } : e)))
     }, 700)
   }, [])
 
   const handleCancelCreate = useCallback(() => setCreator(null), [])
-
-  // ─── Event click → delete ──────────────────────────────────────
 
   const handleEventClick = useCallback((event: CalendarEvent) => {
     setDeleteTarget(event)
@@ -106,11 +98,12 @@ export default function App() {
 
   const handleConfirmDelete = useCallback(() => {
     if (!deleteTarget) return
+
     const targetId = deleteTarget.id
     setDeleteTarget(null)
-    setEvents((prev) =>
-      prev.map((e) => (e.id === targetId ? { ...e, isPopping: true } : e))
-    )
+
+    setEvents((prev) => prev.map((e) => (e.id === targetId ? { ...e, isPopping: true } : e)))
+
     setTimeout(() => {
       setEvents((prev) => prev.filter((e) => e.id !== targetId))
     }, POP_DURATION_MS)
@@ -118,64 +111,57 @@ export default function App() {
 
   const handleCancelDelete = useCallback(() => setDeleteTarget(null), [])
 
-  // ─── Drag / resize → reschedule ────────────────────────────────
+  const handleEventTimeChange = useCallback((id: string, startH: number, endH: number) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, startH, endH } : e)))
+  }, [])
 
-  const handleEventTimeChange = useCallback(
-    (id: string, startH: number, endH: number) => {
-      setEvents((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, startH, endH } : e))
-      )
-    },
-    []
-  )
-
+>>>>>>> theirs
   return (
     <div className="min-h-screen bg-[#f7f6f3] bg-noise flex flex-col">
-      {/* Header */}
       <header className="flex items-center justify-center pt-8 pb-2">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E07B6C] via-[#8B8FD8] to-[#8BA89A]" />
-          <h1 className="text-lg font-semibold text-gray-700 tracking-tight">
-            Ra1nbow
-          </h1>
+          <h1 className="text-lg font-semibold text-gray-700 tracking-tight">Ra1nbow</h1>
         </div>
       </header>
 
-      {/* Ring */}
       <main className="flex-1 flex items-center justify-center px-4">
         <div className="w-full max-w-[560px]">
-          <DayWheel
+          <OrbitCalendar
             events={events}
-            currentTime={currentTime}
             activeStart={settings.activeStart}
             activeEnd={settings.activeEnd}
             timeFormat={settings.timeFormat}
-            onGapClick={handleGapClick}
-            onEventClick={handleEventClick}
-            onEventTimeChange={handleEventTimeChange}
           />
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="text-center pb-6 text-xs text-gray-300 font-mono">
-        click to create · drag to move · pull edges to resize
+        click any event to enter focus mode
       </footer>
 
-      {/* Settings gear — bottom right */}
       <button
         onClick={() => setShowSettings(true)}
         className="fixed bottom-6 right-6 w-10 h-10 rounded-full bg-white/80 backdrop-blur shadow-lg shadow-black/5 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:scale-110 transition-all active:scale-95 z-30"
         aria-label="Settings"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="12" cy="12" r="3" />
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
       </button>
 
-      {/* ─── Modals ─── */}
-
+<<<<<<< ours
+=======
       {creator && (
         <EventCreator
           startH={creator.startH}
@@ -197,6 +183,7 @@ export default function App() {
         />
       )}
 
+>>>>>>> theirs
       {showSettings && (
         <Settings
           activeStart={settings.activeStart}

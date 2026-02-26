@@ -8,7 +8,6 @@ import {
   SLEEP_THICKNESS,
   HANDLE_RADIUS,
   EDGE_HIT_RADIUS,
-  START_OF_DAY,
   TOTAL_HOURS,
 } from '../constants'
 import {
@@ -110,7 +109,6 @@ export default function DayWheel({
   )
 
   const isInteracting = (drag?.hasMoved || resize?.hasMoved) ?? false
-  const activeEventId = drag?.eventId ?? resize?.eventId ?? null
 
   // ─── Sleep / active arc geometry ──────────────────────────────
 

@@ -1,10 +1,5 @@
 import { useEffect, useMemo } from 'react'
 import type { TimeFormat } from '../types'
-import {
-  RING_RADIUS as MAIN_R,
-  RING_THICKNESS as MAIN_T,
-  TOTAL_HOURS,
-} from '../constants'
 import { hourToAngle, arcPath, degToRad, formatMarker, computeAngleOffset } from '../utils'
 
 interface SettingsProps {
