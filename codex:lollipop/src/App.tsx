@@ -1,19 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { CalendarEvent, TimeFormat } from './types'
-<<<<<<< ours
-import { DEFAULT_ACTIVE_END, DEFAULT_ACTIVE_START, SAMPLE_EVENTS } from './constants'
-import OrbitCalendar from './components/OrbitCalendar'
-=======
 import { SAMPLE_EVENTS, DEFAULT_ACTIVE_START, DEFAULT_ACTIVE_END } from './constants'
 import { useCurrentTime } from './hooks/useCurrentTime'
-import { findGapAtTime, defaultEventTimes } from './utils'
+import { defaultEventTimes, findGapAtTime } from './utils'
 import DayWheel from './components/DayWheel'
-import EventCreator from './components/EventCreator'
 import DeleteConfirm from './components/DeleteConfirm'
->>>>>>> theirs
+import EventCreator from './components/EventCreator'
 import Settings from './components/Settings'
 
 const STORAGE_KEY = 'ra1nbow-settings'
+const POP_DURATION_MS = 550
 
 interface PersistedSettings {
   activeStart: number
@@ -44,14 +40,17 @@ function loadSettings(): PersistedSettings {
 }
 
 export default function App() {
-  const [events] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
+  const [events, setEvents] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
   const [showSettings, setShowSettings] = useState(false)
-<<<<<<< ours
-=======
   const currentTime = useCurrentTime()
-
->>>>>>> theirs
   const [settings, setSettings] = useState<PersistedSettings>(loadSettings)
+  const [creator, setCreator] = useState<{
+    startH: number
+    endH: number
+    anchorX: number
+    anchorY: number
+  } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
@@ -69,8 +68,6 @@ export default function App() {
     setSettings((prev) => ({ ...prev, timeFormat: f }))
   }, [])
 
-<<<<<<< ours
-=======
   const handleGapClick = useCallback(
     (hour: number, clientX: number, clientY: number) => {
       const gap = findGapAtTime(events, hour)
@@ -114,8 +111,6 @@ export default function App() {
   const handleEventTimeChange = useCallback((id: string, startH: number, endH: number) => {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, startH, endH } : e)))
   }, [])
-
->>>>>>> theirs
   return (
     <div className="min-h-screen bg-[#f7f6f3] bg-noise flex flex-col">
       <header className="flex items-center justify-center pt-8 pb-2">
@@ -127,17 +122,21 @@ export default function App() {
 
       <main className="flex-1 flex items-center justify-center px-4">
         <div className="w-full max-w-[560px]">
-          <OrbitCalendar
+          <DayWheel
             events={events}
+            currentTime={currentTime}
             activeStart={settings.activeStart}
             activeEnd={settings.activeEnd}
             timeFormat={settings.timeFormat}
+            onGapClick={handleGapClick}
+            onEventClick={handleEventClick}
+            onEventTimeChange={handleEventTimeChange}
           />
         </div>
       </main>
 
       <footer className="text-center pb-6 text-xs text-gray-300 font-mono">
-        click any event to enter focus mode
+        drag events to move • pull edges to resize • click gaps to add
       </footer>
 
       <button
@@ -160,8 +159,6 @@ export default function App() {
         </svg>
       </button>
 
-<<<<<<< ours
-=======
       {creator && (
         <EventCreator
           startH={creator.startH}
@@ -182,8 +179,6 @@ export default function App() {
           onCancel={handleCancelDelete}
         />
       )}
-
->>>>>>> theirs
       {showSettings && (
         <Settings
           activeStart={settings.activeStart}
