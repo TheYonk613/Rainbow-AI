@@ -75,7 +75,7 @@ export default function TaskEditModal({ task, onSave, onComplete, onCancel, orig
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.7, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-                onClick={e => e.stopPropagation()} // prevent backdrop dismiss
+                onClick={(e: React.MouseEvent) => e.stopPropagation()} // prevent backdrop dismiss
             >
                 {/* Colour accent strip */}
                 <div

@@ -41,6 +41,17 @@ export function angleToHour(angleDeg: number, offset = 0): number {
   return (norm / 360) * TOTAL_HOURS
 }
 
+
+export function normalizeAngle(angle: number): number {
+  return ((angle % 360) + 360) % 360
+}
+
+export function getEventMidpointHour(startH: number, endH: number): number {
+  const normalizedEnd = endH >= startH ? endH : endH + TOTAL_HOURS
+  const midpoint = (startH + normalizedEnd) / 2
+  return midpoint % TOTAL_HOURS
+}
+
 export function degToRad(deg: number): number {
   return (deg * Math.PI) / 180
 }

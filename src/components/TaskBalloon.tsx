@@ -74,7 +74,6 @@ export default function TaskBalloon({
     const translateX = useTransform(sp, [0, 1], [0, xShift])
     const translateY = useTransform(sp, [0, 1], [0, yShift])
     const scaleVal = useTransform(sp, [0, 1], [0.25, scale])
-    const opacity = useTransform(sp, [0, 0.12, 1], [0, 1, 1])
     const tilt = useTransform(sp, [0, 1], [0, tiltDeg])
 
     // ── Repulsion MotionValues ─────────────────────────────────────────────
