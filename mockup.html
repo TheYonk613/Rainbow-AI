@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nancy's Daily Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="app-shell">
+
+        <!-- TOP NAV BAR -->
+        <header class="top-nav">
+            <div class="nav-left">
+                <h1 class="month-title">October 2024</h1>
+                <div class="nav-arrows">
+                    <button class="arrow-btn" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button class="arrow-btn" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="nav-right">
+                <div class="view-toggle">
+                    <button class="toggle-btn"><i class="fa-regular fa-calendar"></i> Month</button>
+                    <button class="toggle-btn active"><i class="fa-solid fa-bars"></i> Day</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- SUB HEADER -->
+        <div class="sub-header">
+            <div class="sub-header-left">
+                <h2 class="day-title">Tuesday, October 8</h2>
+                <span class="greeting">Good afternoon, Nancy 👋</span>
+            </div>
+            <span class="event-count">6 Events</span>
+        </div>
+
+        <!-- SECTION LABELS (Anchored above the lane) -->
+        <div class="lane-labels">
+            <span class="lane-label label-earlier"><span class="label-icon">◀</span> Earlier</span>
+            <span class="lane-label label-now"><span class="now-dot"></span> Now</span>
+            <span class="lane-label label-later">Later <span class="label-icon">▶</span></span>
+        </div>
+
+        <!-- === THE UNIFIED TIMELINE LANE === -->
+        <div class="timeline-lane">
+
+            <!-- TRACK LINE (runs full width behind everything) -->
+            <div class="track-line"></div>
+
+            <!-- PAST: Tightly Stacked -->
+            <div class="past-cluster">
+                <div class="past-chip chip-1">
+                    <span class="chip-time">08:00</span>
+                    <span class="chip-title">Emails</span>
+                </div>
+                <div class="past-chip chip-2">
+                    <span class="chip-time">09:00</span>
+                    <span class="chip-title">Wireframes</span>
+                </div>
+                <div class="past-chip chip-3">
+                    <span class="chip-time">11:00</span>
+                    <span class="chip-title">Discovery Call</span>
+                </div>
+            </div>
+
+            <!-- GAP: Past → Now -->
+            <div class="lane-gap">
+                <span class="gap-pill">2h free</span>
+            </div>
+
+            <!-- HERO (Center) -->
+            <div class="hero-card">
+                <div class="hero-top-bar">
+                    <span class="hero-badge">Current Task</span>
+                    <button class="hero-edit-btn" aria-label="Edit"><i class="fa-solid fa-pen"></i></button>
+                </div>
+                <div class="hero-main">
+                    <span class="hero-date">October 8th, 2024</span>
+                    <h1 class="hero-time">14:00</h1>
+                    <h2 class="hero-title">Hi-Fi Mockups — SaaS Dashboard</h2>
+                    <p class="hero-desc">Polishing analytics screens in Figma. Finalising component library.</p>
+                </div>
+                <div class="hero-footer">
+                    <span class="hero-end-time">Ends at 15:30</span>
+                </div>
+            </div>
+
+            <!-- GAP: Now → Future 1 -->
+            <div class="lane-gap">
+                <span class="gap-pill">30m free</span>
+            </div>
+
+            <!-- FUTURE CARDS: Spread out clearly -->
+            <div class="future-card">
+                <span class="future-time">16:00 – 16:45</span>
+                <span class="future-title">Client Feedback Review</span>
+                <span class="future-desc">Revision notes on e-commerce redesign.</span>
+                <span class="future-tag">Meeting</span>
+            </div>
+
+            <div class="lane-gap">
+                <span class="gap-pill">15m</span>
+            </div>
+
+            <div class="future-card">
+                <span class="future-time">17:00 – 18:00</span>
+                <span class="future-title">Portfolio Case Study</span>
+                <span class="future-desc">Writing up Fintech project for Behance.</span>
+                <span class="future-tag tag-personal">Personal</span>
+            </div>
+
+            <div class="lane-gap">
+                <span class="gap-pill">1h free</span>
+            </div>
+
+            <div class="future-card future-distant">
+                <span class="future-time">19:00 – 20:00</span>
+                <span class="future-title">UX Meetup (Online)</span>
+                <span class="future-desc">Guest talk on design systems.</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FAB -->
+    <div class="fab-container">
+        <button class="create-event-fab">
+            <i class="fa-solid fa-plus fab-icon"></i>
+            <span class="fab-text">Create Event</span>
+        </button>
+    </div>
+
+    <!-- Orbit Mode Button — bottom left -->
+    <a href="/" class="orbit-mode-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="3" />
+        </svg>
+        Orbit Mode
+    </a>
+</body>
+
+</html>

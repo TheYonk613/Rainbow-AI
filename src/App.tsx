@@ -9,6 +9,7 @@ import EventActionMenu from './components/EventActionMenu'
 import EventCreator from './components/EventCreator'
 import EventEditor from './components/EventEditor'
 import Settings from './components/Settings'
+import TasksPage from './components/TasksPage'
 
 const STORAGE_KEY = 'ra1nbow-settings'
 const POP_DURATION_MS = 550
@@ -45,6 +46,7 @@ function loadSettings(): PersistedSettings {
 }
 
 export default function App() {
+  const [page, setPage] = useState<'day' | 'tasks'>('day')
   const [events, setEvents] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
   const [showSettings, setShowSettings] = useState(false)
   const currentTime = useCurrentTime()
@@ -105,8 +107,9 @@ export default function App() {
   const handleCancelCreate = useCallback(() => setCreator(null), [])
 
   const handleEventClick = useCallback((event: CalendarEvent, clientX: number, clientY: number) => {
+    if (page !== 'day') return
     setActionTarget({ event, anchorX: clientX, anchorY: clientY })
-  }, [])
+  }, [page])
 
   const handleConfirmDelete = useCallback(() => {
     if (!deleteTarget) return
@@ -139,6 +142,17 @@ export default function App() {
       prev && prev.event.id === id ? { ...prev, event: { ...prev.event, color } } : prev
     )
   }, [])
+
+  // Close ring-only overlays when leaving the day view
+  useEffect(() => {
+    if (page !== 'day') {
+      setCreator(null)
+      setDeleteTarget(null)
+      setActionTarget(null)
+      setEditTarget(null)
+    }
+  }, [page])
+
   return (
     <div className="min-h-screen bg-[#f7f6f3] bg-noise flex flex-col">
       <header className="flex items-center justify-center pt-8 pb-2">
@@ -148,25 +162,59 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4">
-        <div className="w-full max-w-[560px]">
-          <DayWheel
-            events={events}
-            currentTime={currentTime}
-            activeStart={settings.activeStart}
-            activeEnd={settings.activeEnd}
-            timeFormat={settings.timeFormat}
-            allowOverlap={settings.allowOverlap}
-            onGapClick={handleGapClick}
-            onEventClick={handleEventClick}
-            onEventTimeChange={handleEventTimeChange}
-          />
-        </div>
-      </main>
+      {page === 'day' ? (
+        <>
+          <main className="flex-1 flex items-center justify-center px-4">
+            <div className="w-full max-w-[560px]">
+              <DayWheel
+                events={events}
+                currentTime={currentTime}
+                activeStart={settings.activeStart}
+                activeEnd={settings.activeEnd}
+                timeFormat={settings.timeFormat}
+                allowOverlap={settings.allowOverlap}
+                onGapClick={handleGapClick}
+                onEventClick={handleEventClick}
+                onEventTimeChange={handleEventTimeChange}
+              />
+            </div>
+          </main>
 
-      <footer className="text-center pb-6 text-xs text-gray-300 font-mono">
-        drag events to move • pull edges to resize • click gaps to add
-      </footer>
+          <footer className="text-center pb-6 text-xs text-gray-300 font-mono">
+            drag events to move • pull edges to resize • click gaps to add
+          </footer>
+        </>
+      ) : (
+        <TasksPage />
+      )}
+
+      <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2">
+        <a
+          href="/mockup.html"
+          className="h-10 px-4 rounded-full bg-white/80 backdrop-blur shadow-lg shadow-black/5 border border-gray-100 flex items-center gap-2 text-gray-400 hover:text-gray-600 hover:scale-105 transition-all active:scale-95 no-underline text-xs font-semibold tracking-wide"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="3" width="20" height="18" rx="3" />
+            <path d="M2 9h20" />
+          </svg>
+          Card Mode
+        </a>
+
+        <button
+          onClick={() => setPage(page === 'day' ? 'tasks' : 'day')}
+          className={`h-10 px-4 rounded-full backdrop-blur shadow-lg shadow-black/5 border flex items-center gap-2 hover:scale-105 transition-all active:scale-95 text-xs font-semibold tracking-wide cursor-pointer ${
+            page === 'tasks'
+              ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white border-white/30'
+              : 'bg-white/80 text-gray-400 hover:text-gray-600 border-gray-100'
+          }`}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="6" r="4" />
+            <path d="M12 10 Q11 16, 12 22" />
+          </svg>
+          {page === 'tasks' ? 'Day View' : 'Tasks'}
+        </button>
+      </div>
 
       <button
         onClick={() => setShowSettings(true)}
