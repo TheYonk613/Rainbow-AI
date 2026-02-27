@@ -164,6 +164,7 @@ export default function App() {
 
       {page === 'day' ? (
         <>
+          {/* Ring */}
           <main className="flex-1 flex items-center justify-center px-4">
             <div className="w-full max-w-[560px]">
               <DayWheel
@@ -188,6 +189,7 @@ export default function App() {
         <TasksPage />
       )}
 
+      {/* Bottom left nav pills */}
       <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2">
         <a
           href="/mockup.html"
