@@ -4,15 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nancy's Daily Planner</title>
+    <title>Nancy's Daily Planner - Itinerary</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
+
+    <!-- BACKGROUND ABSTRACT SHAPES -->
+    <div class="bg-shape bg-shape-pink"></div>
+    <div class="bg-shape bg-shape-orange"></div>
+    <div class="bg-shape bg-shape-yellow"></div>
+    <div class="bg-shape bg-shape-teal"></div>
+    <div class="bg-shape bg-shape-green"></div>
+
     <div class="app-shell">
 
         <!-- TOP NAV BAR -->
@@ -41,89 +49,68 @@
             <span class="event-count">6 Events</span>
         </div>
 
-        <!-- SECTION LABELS (Anchored above the lane) -->
+        <!-- SECTION LABELS -->
         <div class="lane-labels">
             <span class="lane-label label-earlier"><span class="label-icon">◀</span> Earlier</span>
             <span class="lane-label label-now"><span class="now-dot"></span> Now</span>
             <span class="lane-label label-later">Later <span class="label-icon">▶</span></span>
         </div>
 
-        <!-- === THE UNIFIED TIMELINE LANE === -->
+        <!-- === THE UNIFIED TIMELINE LANE (ITINERARY) === -->
         <div class="timeline-lane">
 
-            <!-- TRACK LINE (runs full width behind everything) -->
+            <!-- TRACK LINE (Dashed connecting line) -->
             <div class="track-line"></div>
 
-            <!-- PAST: Tightly Stacked -->
-            <div class="past-cluster">
-                <div class="past-chip chip-1">
-                    <span class="chip-time">08:00</span>
-                    <span class="chip-title">Emails</span>
-                </div>
-                <div class="past-chip chip-2">
-                    <span class="chip-time">09:00</span>
-                    <span class="chip-title">Wireframes</span>
-                </div>
-                <div class="past-chip chip-3">
-                    <span class="chip-time">11:00</span>
-                    <span class="chip-title">Discovery Call</span>
-                </div>
+            <!-- PAST CARDS -->
+            <div class="itinerary-card card-past">
+                <span class="card-time">08:00</span>
+                <span class="card-title">Emails</span>
             </div>
 
-            <!-- GAP: Past → Now -->
-            <div class="lane-gap">
-                <span class="gap-pill">2h free</span>
+            <div class="timeline-spacing"><div class="spacing-dot"></div></div>
+
+            <div class="itinerary-card card-past">
+                <span class="card-time">09:00</span>
+                <span class="card-title">Wireframes</span>
             </div>
 
-            <!-- HERO (Center) -->
-            <div class="hero-card">
-                <div class="hero-top-bar">
-                    <span class="hero-badge">Current Task</span>
-                    <button class="hero-edit-btn" aria-label="Edit"><i class="fa-solid fa-pen"></i></button>
-                </div>
-                <div class="hero-main">
-                    <span class="hero-date">October 8th, 2024</span>
-                    <h1 class="hero-time">14:00</h1>
-                    <h2 class="hero-title">Hi-Fi Mockups — SaaS Dashboard</h2>
-                    <p class="hero-desc">Polishing analytics screens in Figma. Finalising component library.</p>
-                </div>
-                <div class="hero-footer">
-                    <span class="hero-end-time">Ends at 15:30</span>
-                </div>
+            <div class="timeline-spacing"><div class="spacing-dot"></div></div>
+
+            <!-- CURRENT CARD (Highlighted but light) -->
+            <div class="itinerary-card card-current">
+                <span class="current-badge">Current</span>
+                <span class="card-time">14:00</span>
+                <span class="card-title">Hi-Fi Mockups — SaaS Dashboard</span>
+                <span class="card-desc">Polishing analytics screens in Figma. Finalising component library. Ends at 15:30</span>
             </div>
 
-            <!-- GAP: Now → Future 1 -->
-            <div class="lane-gap">
-                <span class="gap-pill">30m free</span>
+            <div class="timeline-spacing"><div class="spacing-dot"></div></div>
+
+            <!-- FUTURE CARDS -->
+            <div class="itinerary-card card-future">
+                <span class="card-time">16:00 – 16:45</span>
+                <span class="card-title">Client Feedback Review</span>
+                <span class="card-desc">Revision notes on e-commerce redesign.</span>
+                <span class="card-tag tag-meeting">Meeting</span>
             </div>
 
-            <!-- FUTURE CARDS: Spread out clearly -->
-            <div class="future-card">
-                <span class="future-time">16:00 – 16:45</span>
-                <span class="future-title">Client Feedback Review</span>
-                <span class="future-desc">Revision notes on e-commerce redesign.</span>
-                <span class="future-tag">Meeting</span>
+            <div class="timeline-spacing"><div class="spacing-dot"></div></div>
+
+            <div class="itinerary-card card-future">
+                <span class="card-time">17:00 – 18:00</span>
+                <span class="card-title">Portfolio Case Study</span>
+                <span class="card-desc">Writing up Fintech project for Behance.</span>
+                <span class="card-tag tag-personal">Personal</span>
             </div>
 
-            <div class="lane-gap">
-                <span class="gap-pill">15m</span>
-            </div>
+            <div class="timeline-spacing"><div class="spacing-dot"></div></div>
 
-            <div class="future-card">
-                <span class="future-time">17:00 – 18:00</span>
-                <span class="future-title">Portfolio Case Study</span>
-                <span class="future-desc">Writing up Fintech project for Behance.</span>
-                <span class="future-tag tag-personal">Personal</span>
-            </div>
-
-            <div class="lane-gap">
-                <span class="gap-pill">1h free</span>
-            </div>
-
-            <div class="future-card future-distant">
-                <span class="future-time">19:00 – 20:00</span>
-                <span class="future-title">UX Meetup (Online)</span>
-                <span class="future-desc">Guest talk on design systems.</span>
+            <div class="itinerary-card card-future" style="opacity: 0.6;">
+                <span class="card-time">19:00 – 20:00</span>
+                <span class="card-title">UX Meetup (Online)</span>
+                <span class="card-desc">Guest talk on design systems.</span>
+                <span class="card-tag tag-work">Work</span>
             </div>
 
         </div>
@@ -137,7 +124,7 @@
         </button>
     </div>
 
-    <!-- Orbit Mode Button — bottom left -->
+    <!-- Orbit Mode Button -->
     <a href="/" class="orbit-mode-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">

@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
   --ring-pop-duration: 0.6s;
@@ -10,7 +11,7 @@ body {
   margin: 0;
   background-color: #f7f6f3;
   color: #2d2d2d;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
@@ -165,13 +166,13 @@ body {
 
 @keyframes drag-lift {
   0% {
-    stroke-width: 80;
+    transform: scale(1);
     filter: none;
   }
 
   100% {
-    stroke-width: 88;
-    filter: drop-shadow(0 0 12px var(--drag-color, rgba(0, 0, 0, 0.15)));
+    transform: scale(1.02);
+    filter: drop-shadow(0 0 16px var(--drag-color, rgba(0, 0, 0, 0.2)));
   }
 }
 
@@ -179,6 +180,7 @@ body {
 .segment-resizing {
   animation: drag-lift 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   opacity: 1 !important;
+  transform-origin: center center;
 }
 
 .segment-receded {
@@ -261,34 +263,477 @@ body {
 
 /* ─── Settings bottom sheet ─── */
 
-@keyframes sheet-up {
+.settings-backdrop {}
+
+.settings-sheet {}
+
+/* ─── Event action menu (choices popup) ─── */
+
+@keyframes menu-pop {
   0% {
-    transform: translateY(100%);
+    transform: scale(0.88) translateY(6px);
     opacity: 0;
   }
 
+  60% {
+    transform: scale(1.03) translateY(-1px);
+    opacity: 1;
+  }
+
   100% {
-    transform: translateY(0);
+    transform: scale(1) translateY(0);
     opacity: 1;
   }
 }
 
-@keyframes sheet-backdrop {
+/* ─── Apple-style calendar menu ─── */
+
+.apple-calendar-menu {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(0, 0, 0, 0.05);
+  animation: menu-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transform-origin: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+.apple-menu-content {
+  padding: 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.apple-menu-content:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.apple-menu-content:active {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.apple-menu-date-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.apple-menu-day {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #ff3b30;
+  /* Apple Red */
+  letter-spacing: 0.5px;
+}
+
+.apple-menu-date {
+  font-size: 17px;
+  font-weight: 400;
+  color: #1a1a1a;
+  margin-top: -2px;
+}
+
+.apple-menu-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.apple-menu-indicator {
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.apple-menu-title-display {
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  padding: 2px 0;
+  cursor: text;
+  min-height: 21px;
+}
+
+.apple-menu-title-input {
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  margin: 0;
+  line-height: 1.3;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  width: 100%;
+  padding: 2px 6px;
+  border-radius: 4px;
+  outline: 2px solid #007aff;
+  font-family: inherit;
+}
+
+.apple-menu-time-picker-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  padding-left: 14px;
+}
+
+.apple-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.apple-time-field label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #888;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.apple-time-field input {
+  font-size: 13px;
+  border: none;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: #333;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.apple-menu-duration-tag {
+  margin-top: 12px;
+  padding-left: 14px;
+  font-size: 11px;
+  color: #999;
+  font-weight: 500;
+}
+
+.apple-menu-notes-section {
+  margin-top: 18px;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.apple-notes-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #888;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.apple-menu-notes-display {
+  font-size: 13px;
+  color: #444;
+  min-height: 60px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  cursor: text;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.apple-menu-notes-input {
+  font-size: 13px;
+  color: #000;
+  min-height: 80px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  outline: 2px solid #007aff;
+  font-family: inherit;
+  resize: none;
+  line-height: 1.4;
+}
+
+.apple-menu-divider {
+  height: 0.5px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 0 16px;
+}
+
+.apple-menu-footer {
+  padding: 12px 16px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.apple-menu-colors {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.apple-color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  position: relative;
+}
+
+.apple-color-dot:hover {
+  transform: scale(1.3);
+}
+
+.apple-color-dot.is-active {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+.apple-menu-delete-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.apple-menu-delete-btn:hover {
+  background: #ff3b30;
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* ── Dark Mode ── */
+
+.dark .apple-calendar-menu {
+  background: rgba(30, 30, 30, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.dark .apple-menu-content:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dark .apple-menu-date {
+  color: #efefef;
+}
+
+.dark .apple-menu-title-display {
+  color: #fff;
+}
+
+.dark .apple-menu-title-input {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .apple-time-field input {
+  background: rgba(255, 255, 255, 0.08);
+  color: #eee;
+}
+
+.dark .apple-time-field label {
+  color: #888;
+}
+
+.dark .apple-menu-duration-tag {
+  color: #777;
+}
+
+.dark .apple-menu-notes-display {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .apple-menu-notes-input {
+  color: #fff;
+  background: #252525;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .apple-menu-divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .apple-color-dot.is-active {
+  box-shadow: 0 0 0 2px #1e1e1e, 0 0 0 3.5px rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Event editor modal ─── */
+
+@keyframes editor-up {
   0% {
+    transform: translateY(20px) scale(0.96);
     opacity: 0;
   }
 
   100% {
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
 
-.settings-backdrop {
-  animation: sheet-backdrop 0.25s ease forwards;
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  animation: sheet-backdrop 0.2s ease forwards;
 }
 
-.settings-sheet {
-  animation: sheet-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+.event-editor-sheet {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 24px 22px;
+  width: min(340px, 90vw);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+  animation: editor-up 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  position: relative;
+}
+
+.dark .event-editor-sheet {
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+}
+
+.event-editor-swatch {
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  margin: 0 auto 18px;
+  opacity: 0.7;
+}
+
+.event-editor-heading {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
+  margin: 0 0 18px;
+}
+
+.dark .event-editor-heading {
+  color: #eee;
+}
+
+.event-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.event-editor-input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 500;
+  color: #1a1a1a;
+  background: #f9f9f9;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dark .event-editor-input {
+  background: #252525;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.event-editor-input:focus {
+  border-color: rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+  background: #fff;
+}
+
+.dark .event-editor-input:focus {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: #2a2a2a;
+}
+
+.event-editor-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-ghost {
+  padding: 9px 18px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  transition: background 0.12s ease;
+}
+
+.dark .btn-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: #bbb;
+}
+
+.btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.dark .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.btn-primary {
+  padding: 9px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  opacity: 0.92;
+  transition: opacity 0.12s ease, transform 0.1s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 1;
+  transform: scale(1.02);
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ─── Balloon animations ─── */
@@ -373,6 +818,101 @@ body {
   animation: modal-circle-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* ─── DayWheel adaptive styling ─── */
+.sleep-arc {
+  stroke: rgba(0, 0, 0, 0.025);
+}
+
+.dark .sleep-arc {
+  stroke: rgba(255, 255, 255, 0.035);
+}
+
+.active-arc {
+  stroke: rgba(0, 0, 0, 0.045);
+}
+
+.dark .active-arc {
+  stroke: rgba(255, 255, 255, 0.06);
+}
+
+.hour-marker {
+  fill: rgba(0, 0, 0, 0.15);
+}
+
+.dark .hour-marker {
+  fill: rgba(255, 255, 255, 0.15);
+}
+
+.hour-marker-major {
+  fill: rgba(0, 0, 0, 0.28);
+}
+
+.dark .hour-marker-major {
+  fill: rgba(255, 255, 255, 0.35);
+}
+
+/* ─── Global Dark Mode transitions ─── */
+body,
+.min-h-screen {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+.dark .event-action-menu {
+  background: rgba(30, 30, 30, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dark .event-action-name {
+  color: #efefef;
+}
+
+.dark .event-action-time {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dark .event-action-divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .event-action-btn {
+  color: #efefef;
+}
+
+.dark .event-action-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .event-editor-sheet {
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+}
+
+.dark .event-editor-heading {
+  color: #efefef;
+}
+
+.dark .event-editor-input {
+  background: #2a2a2a;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #efefef;
+}
+
+.dark .event-editor-input:focus {
+  background: #333;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .btn-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ccc;
+}
+
+.dark .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 /* Subtle noise texture overlay */
 .bg-noise::before {
   content: '';
@@ -382,4 +922,8 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 9999;
+}
+
+.dark .bg-noise::before {
+  opacity: 0.04;
 }

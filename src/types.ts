@@ -17,6 +17,7 @@ export interface CalendarEvent {
   color: string        // hex color
   type: EventType
   fluidBoundary?: FluidBoundary
+  notes?: string       // optional notes/description
   isNew?: boolean      // triggers spring-in animation
   isPopping?: boolean  // triggers bubble-pop destruction animation
 }

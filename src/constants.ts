@@ -22,25 +22,26 @@ export const HANDLE_RADIUS = 6
 export const EDGE_HIT_RADIUS = 20
 export const MIN_EVENT_DURATION = 0.25
 
-// Color palette
+// Color palette — neon signatures (Electric, Plasma, Volt, Blaze, UV, Coral, Aurora, Solar)
 export const EVENT_COLORS = [
-  '#E07B6C', // coral
-  '#D4A574', // golden tan
-  '#8B8FD8', // periwinkle
-  '#8BA89A', // sage green
-  '#5C4A6B', // deep plum
-  '#F0849B', // soft pink
-  '#7CC4D4', // sky blue
-  '#C4A0D8', // lavender
+  '#00f5ff', // electric  — cyan
+  '#ff00cc', // plasma    — magenta
+  '#ccff00', // volt      — acid lime
+  '#ff6600', // blaze     — fire orange
+  '#bf00ff', // ultraviolet — deep violet
+  '#f53010', // coral     — vivid red
+  '#00ffb3', // aurora    — teal
+  '#ffd700', // solar     — gold
 ]
 
 export const DEFAULT_EVENT_DURATION = 1
 
 export const SAMPLE_EVENTS = [
-  { id: '1', title: 'Morning', startH: 7, endH: 8.5, color: '#E07B6C', type: 'fluid' as const },
-  { id: '2', title: 'Work', startH: 9, endH: 12, color: '#8B8FD8', type: 'solid' as const },
-  { id: '3', title: 'Lunch', startH: 12, endH: 13, color: '#D4A574', type: 'fluid' as const },
-  { id: '4', title: 'Flow', startH: 14, endH: 16.5, color: '#5C4A6B', type: 'fluid' as const },
-  { id: '5', title: 'Exercise', startH: 17, endH: 18.5, color: '#F0849B', type: 'solid' as const },
-  { id: '6', title: 'Wind Down', startH: 20, endH: 22, color: '#8BA89A', type: 'fluid' as const },
+  { id: '1', title: 'Morning', startH: 7, endH: 8.5, color: '#f53010', type: 'fluid' as const },
+  { id: '2', title: 'Work', startH: 9, endH: 12, color: '#00f5ff', type: 'solid' as const },
+  { id: '3', title: 'Lunch', startH: 12, endH: 13, color: '#ffd700', type: 'fluid' as const },
+  { id: '4', title: 'Flow', startH: 14, endH: 16.5, color: '#bf00ff', type: 'fluid' as const },
+  { id: '5', title: 'Exercise', startH: 17, endH: 18.5, color: '#ff6600', type: 'solid' as const },
+  { id: '6', title: 'Wind Down', startH: 20, endH: 22, color: '#00ffb3', type: 'fluid' as const },
 ]
+

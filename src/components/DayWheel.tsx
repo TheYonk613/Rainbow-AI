@@ -1,4 +1,5 @@
 import { useRef, useMemo, useCallback, useState } from 'react'
+import { motion } from 'framer-motion'
 import type { CalendarEvent, Position, DragState, ResizeState, TimeFormat } from '../types'
 import {
   WHEEL_SIZE,
@@ -6,20 +7,21 @@ import {
   RING_RADIUS,
   RING_THICKNESS,
   SLEEP_THICKNESS,
-  HANDLE_RADIUS,
   EDGE_HIT_RADIUS,
-  START_OF_DAY,
   TOTAL_HOURS,
+  MIN_EVENT_DURATION,
 } from '../constants'
 import {
   hourToAngle,
   hourToPosition,
   arcPath,
+  bubblePath,
   arcLength,
   formatTime,
   formatMarker,
   degToRad,
   clientToSVG,
+  svgToClient,
   isOnRing,
   pointToHour,
   findGapAtTime,
@@ -37,8 +39,9 @@ interface DayWheelProps {
   activeStart: number
   activeEnd: number
   timeFormat: TimeFormat
+  allowOverlap: boolean
   onGapClick: (hour: number, clientX: number, clientY: number) => void
-  onEventClick: (event: CalendarEvent) => void
+  onEventClick: (event: CalendarEvent, clientX: number, clientY: number) => void
   onEventTimeChange: (id: string, startH: number, endH: number) => void
 }
 
@@ -50,12 +53,14 @@ interface EdgeRef {
 function findNearestEdge(
   pt: Position,
   hour: number,
-  events: CalendarEvent[],
+  sortedEvents: CalendarEvent[], // pass visually sorted events so later = higher z-index
   offset: number
 ): (EdgeRef & { dist: number }) | null {
   let closest: (EdgeRef & { dist: number }) | null = null
 
-  for (const ev of events) {
+  // Iterate backwards so we hit topmost (latest rendered) elements first
+  for (let i = sortedEvents.length - 1; i >= 0; i--) {
+    const ev = sortedEvents[i]
     if (ev.isPopping) continue
     const sp = hourToPosition(ev.startH, offset)
     const ep = hourToPosition(ev.endH, offset)
@@ -84,6 +89,7 @@ export default function DayWheel({
   activeStart,
   activeEnd,
   timeFormat,
+  allowOverlap,
   onGapClick,
   onEventClick,
   onEventTimeChange,
@@ -96,6 +102,7 @@ export default function DayWheel({
   const [hoveredEdge, setHoveredEdge] = useState<EdgeRef | null>(null)
 
   const pointerStartRef = useRef<Position | null>(null)
+  const hasInteractedRef = useRef(false)
 
   // ─── Dynamic rotation offset ──────────────────────────────────
 
@@ -110,7 +117,6 @@ export default function DayWheel({
   )
 
   const isInteracting = (drag?.hasMoved || resize?.hasMoved) ?? false
-  const activeEventId = drag?.eventId ?? resize?.eventId ?? null
 
   // ─── Sleep / active arc geometry ──────────────────────────────
 
@@ -146,13 +152,13 @@ export default function DayWheel({
       })
     }
     return result
-  }, [angleOffset])
+  }, [angleOffset, timeFormat])
 
   // ─── Boundary handles ─────────────────────────────────────────
 
   const handles = useMemo(() => {
     const activeEvents = sorted.filter((e) => !e.isPopping)
-    const points: { pos: Position; eventId: string; edge: 'start' | 'end' }[] = []
+    const points: { pos: Position; angle: number; eventId: string; edge: 'start' | 'end' }[] = []
 
     for (const event of activeEvents) {
       let sH = event.startH
@@ -166,8 +172,10 @@ export default function DayWheel({
         eH = resize.previewEndH
       }
 
-      points.push({ pos: hourToPosition(sH, angleOffset), eventId: event.id, edge: 'start' })
-      points.push({ pos: hourToPosition(eH, angleOffset), eventId: event.id, edge: 'end' })
+      const sAngle = hourToAngle(sH, angleOffset)
+      const eAngle = hourToAngle(eH, angleOffset)
+      points.push({ pos: hourToPosition(sH, angleOffset), angle: sAngle, eventId: event.id, edge: 'start' })
+      points.push({ pos: hourToPosition(eH, angleOffset), angle: eAngle, eventId: event.id, edge: 'end' })
     }
 
     const unique: typeof points = []
@@ -180,10 +188,7 @@ export default function DayWheel({
     return unique
   }, [sorted, drag, resize, angleOffset])
 
-  const nowPos = useMemo(
-    () => hourToPosition(currentTime, angleOffset),
-    [currentTime, angleOffset]
-  )
+
 
   const hoverPos = useMemo(
     () => (hoverHour !== null ? hourToPosition(hoverHour, angleOffset) : null),
@@ -197,11 +202,13 @@ export default function DayWheel({
 
   const hoverEventId = useMemo(() => {
     if (hoverHour === null) return null
-    const ev = events.find(
+    // Find the visually topmost event
+    const rev = [...sorted].reverse()
+    const ev = rev.find(
       (e) => !e.isPopping && hoverHour >= e.startH && hoverHour < e.endH
     )
     return ev?.id ?? null
-  }, [events, hoverHour])
+  }, [sorted, hoverHour])
 
   // ─── Pointer handlers ─────────────────────────────────────────
 
@@ -212,14 +219,23 @@ export default function DayWheel({
       if (!isOnRing(pt)) return
 
       const hour = pointToHour(pt, angleOffset)
+      hasInteractedRef.current = false
 
       // Priority 1: edge hit → resize
-      const nearEdge = findNearestEdge(pt, hour, events, angleOffset)
+      const nearEdge = findNearestEdge(pt, hour, sorted, angleOffset)
       if (nearEdge) {
-        ;(e.target as SVGElement).setPointerCapture(e.pointerId)
+        ; (e.target as SVGElement).setPointerCapture(e.pointerId)
         pointerStartRef.current = pt
 
-        const bounds = getResizeBounds(nearEdge.eventId, nearEdge.edge, events)
+        let bounds = getResizeBounds(nearEdge.eventId, nearEdge.edge, events)
+        if (allowOverlap) {
+          // Wide-open bounds but enforce minimum duration so it doesn't flip direction
+          bounds = {
+            fixedHour: bounds.fixedHour,
+            minHour: nearEdge.edge === 'start' ? 0 : bounds.fixedHour + MIN_EVENT_DURATION,
+            maxHour: nearEdge.edge === 'start' ? bounds.fixedHour - MIN_EVENT_DURATION : 24,
+          }
+        }
         const ev = events.find((x) => x.id === nearEdge.eventId)!
 
         setResize({
@@ -240,15 +256,20 @@ export default function DayWheel({
       }
 
       // Priority 2: interior → drag
-      const clickedEvent = events.find(
-        (ev) => !ev.isPopping && hour >= ev.startH && hour < ev.endH
-      )
+      // Find the topmost rendered event (reverse order of sorted)
+      const clickedEvent = [...sorted]
+        .reverse()
+        .find((ev) => !ev.isPopping && hour >= ev.startH && hour < ev.endH)
       if (!clickedEvent) return
 
-      ;(e.target as SVGElement).setPointerCapture(e.pointerId)
+        ; (e.target as SVGElement).setPointerCapture(e.pointerId)
       pointerStartRef.current = pt
 
-      const bounds = getDragBounds(clickedEvent.id, events)
+      let bounds = getDragBounds(clickedEvent.id, events)
+      if (allowOverlap) {
+        // Allow free drag across the full ring
+        bounds = { duration: bounds.duration, minStart: 0, maxStart: 24 - bounds.duration }
+      }
       const eventMid = (clickedEvent.startH + clickedEvent.endH) / 2
       const grabOffset = hour - eventMid
 
@@ -267,7 +288,7 @@ export default function DayWheel({
       setHoveredEdge(null)
       e.preventDefault()
     },
-    [events, angleOffset]
+    [events, angleOffset, allowOverlap, sorted]
   )
 
   const handlePointerMove = useCallback(
@@ -283,6 +304,7 @@ export default function DayWheel({
           if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return
         }
 
+        hasInteractedRef.current = true
         const hour = pointToHour(pt, angleOffset)
 
         if (resize.edge === 'start') {
@@ -315,6 +337,7 @@ export default function DayWheel({
           if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return
         }
 
+        hasInteractedRef.current = true
         const hour = pointToHour(pt, angleOffset)
         const newMid = hour - drag.grabOffset
         let newStart = newMid - drag.duration / 2
@@ -336,7 +359,7 @@ export default function DayWheel({
         const hour = pointToHour(pt, angleOffset)
         setHoverHour(hour)
 
-        const nearEdge = findNearestEdge(pt, hour, events, angleOffset)
+        const nearEdge = findNearestEdge(pt, hour, sorted, angleOffset)
         setHoveredEdge(
           nearEdge ? { eventId: nearEdge.eventId, edge: nearEdge.edge } : null
         )
@@ -345,7 +368,7 @@ export default function DayWheel({
         setHoveredEdge(null)
       }
     },
-    [drag, resize, events, angleOffset]
+    [drag, resize, sorted, angleOffset]
   )
 
   const handlePointerUp = useCallback(
@@ -358,7 +381,7 @@ export default function DayWheel({
         }
         setResize(null)
         pointerStartRef.current = null
-        try { ;(e.target as SVGElement).releasePointerCapture(e.pointerId) } catch { /* */ }
+        try { ; (e.target as SVGElement).releasePointerCapture(e.pointerId) } catch { /* */ }
         return
       }
 
@@ -370,7 +393,7 @@ export default function DayWheel({
         }
         setDrag(null)
         pointerStartRef.current = null
-        try { ;(e.target as SVGElement).releasePointerCapture(e.pointerId) } catch { /* */ }
+        try { ; (e.target as SVGElement).releasePointerCapture(e.pointerId) } catch { /* */ }
       }
     },
     [drag, resize, onEventTimeChange]
@@ -379,26 +402,38 @@ export default function DayWheel({
   const handleClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (!svgRef.current) return
-      if (drag?.hasMoved || resize?.hasMoved) return
+      if (hasInteractedRef.current) {
+        hasInteractedRef.current = false
+        return
+      }
 
       const pt = clientToSVG(svgRef.current, e.clientX, e.clientY)
       if (!isOnRing(pt)) return
 
       const hour = pointToHour(pt, angleOffset)
-      const nearEdge = findNearestEdge(pt, hour, events, angleOffset)
+      const nearEdge = findNearestEdge(pt, hour, sorted, angleOffset)
       if (nearEdge) return
 
-      const clickedEvent = events.find(
-        (ev) => !ev.isPopping && hour >= ev.startH && hour < ev.endH
-      )
+      const clickedEvent = [...sorted]
+        .reverse()
+        .find((ev) => !ev.isPopping && hour >= ev.startH && hour < ev.endH)
 
       if (clickedEvent) {
-        onEventClick(clickedEvent)
+        // Calculate mid-point of the event segment in client coordinates
+        const startAngle = hourToAngle(clickedEvent.startH, angleOffset)
+        const endAngle = hourToAngle(clickedEvent.endH, angleOffset)
+        const midAngle = (startAngle + endAngle) / 2
+        const midRad = degToRad(midAngle)
+        const midX = WHEEL_CENTER + RING_RADIUS * Math.cos(midRad)
+        const midY = WHEEL_CENTER + RING_RADIUS * Math.sin(midRad)
+        const clientMid = svgToClient(svgRef.current, midX, midY)
+
+        onEventClick(clickedEvent, clientMid.x, clientMid.y)
       } else {
         onGapClick(hour, e.clientX, e.clientY)
       }
     },
-    [events, onEventClick, onGapClick, drag, resize, angleOffset]
+    [events, onEventClick, onGapClick, sorted, angleOffset]
   )
 
   const handleMouseLeave = useCallback(() => {
@@ -432,18 +467,18 @@ export default function DayWheel({
       <path
         d={sleepArc}
         fill="none"
-        stroke="rgba(0,0,0,0.025)"
         strokeWidth={SLEEP_THICKNESS}
         strokeLinecap="round"
+        className="sleep-arc transition-colors duration-500"
       />
 
       {/* ─── Active arc (full thickness) ─── */}
       <path
         d={activeArc}
         fill="none"
-        stroke="rgba(0,0,0,0.04)"
         strokeWidth={RING_THICKNESS}
         strokeLinecap="round"
+        className="active-arc transition-colors duration-500"
       />
 
       {/* ─── Event segments ─── */}
@@ -465,7 +500,7 @@ export default function DayWheel({
 
         const startAngle = hourToAngle(startH, angleOffset)
         const endAngle = hourToAngle(endH, angleOffset)
-        const d = arcPath(WHEEL_CENTER, WHEEL_CENTER, RING_RADIUS, startAngle, endAngle)
+        const d = bubblePath(WHEEL_CENTER, WHEEL_CENTER, RING_RADIUS - RING_THICKNESS / 2, RING_RADIUS + RING_THICKNESS / 2, startAngle, endAngle)
         const len = arcLength(startH, endH)
 
         const midAngle = (startAngle + endAngle) / 2
@@ -500,25 +535,23 @@ export default function DayWheel({
                 : undefined
             }
           >
-            {/* Arc segment */}
+            {/* Bubble segment */}
             <path
               d={d}
-              fill="none"
-              stroke={event.color}
-              strokeWidth={RING_THICKNESS}
-              strokeLinecap="round"
-              opacity={0.85}
+              fill={event.color}
+              stroke="none"
+              opacity={0.88}
               className={segmentClass}
               style={{
                 ...(isNew
                   ? ({
-                      strokeDasharray: len,
-                      strokeDashoffset: 0,
-                      '--arc-length': len,
-                    } as React.CSSProperties)
+                    strokeDasharray: len,
+                    strokeDashoffset: 0,
+                    '--arc-length': len,
+                  } as React.CSSProperties)
                   : {}),
                 ...(isActive
-                  ? ({ '--drag-color': event.color + '40' } as React.CSSProperties)
+                  ? ({ '--drag-color': event.color + '60' } as React.CSSProperties)
                   : {}),
               }}
             />
@@ -533,9 +566,8 @@ export default function DayWheel({
               fontSize={titleSize}
               fontWeight="600"
               opacity={isReceded ? 0.5 : 0.9}
-              className={`pointer-events-none select-none ${
-                isPopping ? 'animate-text-dissolve' : ''
-              }`}
+              className={`pointer-events-none select-none ${isPopping ? 'animate-text-dissolve' : ''
+                }`}
               style={
                 isPopping
                   ? { transformOrigin: `${midX}px ${midY}px` }
@@ -586,26 +618,24 @@ export default function DayWheel({
         )
       })}
 
-      {/* ─── Boundary handles ─── */}
+      {/* ─── Boundary grip handles ─── */}
       {handles.map((h, i) => {
         const isActiveHandle =
           resize?.hasMoved && h.eventId === resize.eventId && h.edge === resize.edge
         const isHovered =
           !isInteracting && hoveredEdge?.eventId === h.eventId && hoveredEdge?.edge === h.edge
         const event = events.find((e) => e.id === h.eventId)
+        const color = event?.color ?? 'rgba(0,0,0,0.3)'
 
         return (
-          <circle
+          <EdgeGrip
             key={i}
             cx={h.pos.x}
             cy={h.pos.y}
-            r={HANDLE_RADIUS}
-            fill={isActiveHandle && event ? event.color : 'white'}
-            stroke={isActiveHandle ? 'white' : isHovered ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)'}
-            strokeWidth={isActiveHandle ? 2 : 1}
-            className={`pointer-events-none ${
-              isActiveHandle ? 'handle-active' : isHovered ? 'handle-hovered' : ''
-            }`}
+            angleDeg={h.angle}
+            isActive={!!isActiveHandle}
+            isHovered={isHovered}
+            color={color}
           />
         )
       })}
@@ -618,36 +648,17 @@ export default function DayWheel({
           y={y}
           textAnchor="middle"
           dominantBaseline="central"
-          fill={isMajor ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.15)'}
           fontSize={isMajor ? '11' : '9'}
           fontFamily="monospace"
           fontWeight={isMajor ? '500' : '400'}
-          className="pointer-events-none select-none"
+          className={`pointer-events-none select-none transition-colors duration-500 ${isMajor ? 'hour-marker-major' : 'hour-marker'}`}
         >
           {formatMarker(h, timeFormat)}
         </text>
       ))}
 
       {/* ─── Now indicator ─── */}
-      <circle
-        cx={nowPos.x}
-        cy={nowPos.y}
-        r={5}
-        fill="#E07B6C"
-        stroke="white"
-        strokeWidth={2.5}
-        className="pointer-events-none"
-      />
-      <circle
-        cx={nowPos.x}
-        cy={nowPos.y}
-        r={12}
-        fill="none"
-        stroke="#E07B6C"
-        strokeWidth={1.5}
-        opacity={0.4}
-        className="animate-soft-pulse pointer-events-none"
-      />
+      <CurrentTimeIndicator currentTime={currentTime} angleOffset={angleOffset} />
 
       {/* ─── Hover preview (gap click) ─── */}
       {!isInteracting && !hoveredEdge && hoverPos && hoverInGap && (
@@ -660,6 +671,7 @@ export default function DayWheel({
             stroke="rgba(0,0,0,0.08)"
             strokeWidth={1.5}
             strokeDasharray="4 3"
+            className="dark:fill-white/5 dark:stroke-white/20"
           />
           <text
             x={hoverPos.x}
@@ -670,6 +682,7 @@ export default function DayWheel({
             fontSize="10"
             fontWeight="600"
             fontFamily="monospace"
+            className="dark:fill-gray-400"
           >
             +
           </text>
@@ -692,7 +705,7 @@ function TimePill({ hour, angle, fmt }: { hour: number; angle: number; fmt: Time
       className="time-label-pill pointer-events-none"
       style={{ transformOrigin: `${x}px ${y}px` }}
     >
-      <rect x={x - 26} y={y - 9} width={52} height={18} rx={9} fill="rgba(0,0,0,0.65)" />
+      <rect x={x - 26} y={y - 9} width={52} height={18} rx={9} fill="rgba(0,0,0,0.65)" className="dark:fill-white/20 dark:stroke-white/10" stroke="none" />
       <text
         x={x}
         y={y}
@@ -702,10 +715,107 @@ function TimePill({ hour, angle, fmt }: { hour: number; angle: number; fmt: Time
         fontSize="9"
         fontWeight="600"
         fontFamily="monospace"
-        className="select-none"
+        className="select-none dark:fill-gray-100"
       >
         {formatTime(hour, fmt)}
       </text>
+    </g>
+  )
+}
+
+// ─── Current Time Indicator ─────────────────────────────────────
+
+function CurrentTimeIndicator({ currentTime, angleOffset }: { currentTime: number; angleOffset: number }) {
+  const angle = hourToAngle(currentTime, angleOffset)
+  const rad = degToRad(angle)
+
+  // Precision needle: spanning the ring thickness + 4px overshoot on each side
+  const r1 = RING_RADIUS - RING_THICKNESS / 2 - 4
+  const r2 = RING_RADIUS + RING_THICKNESS / 2 + 4
+
+  const x1 = WHEEL_CENTER + r1 * Math.cos(rad)
+  const y1 = WHEEL_CENTER + r1 * Math.sin(rad)
+  const x2 = WHEEL_CENTER + r2 * Math.cos(rad)
+  const y2 = WHEEL_CENTER + r2 * Math.sin(rad)
+
+  return (
+    <motion.g initial={false} className="pointer-events-none">
+      <motion.line
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        stroke="rgba(0, 0, 0, 0.7)"
+        strokeWidth={2}
+        strokeLinecap="round"
+        className="dark:stroke-white/80"
+        animate={{ opacity: [0.6, 1, 0.6] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </motion.g>
+  )
+}
+
+// ─── Edge grip ──────────────────────────────────────────────────────────────
+// Three short radial lines arranged along the arc tangent — like a ≡ grip
+
+function EdgeGrip({
+  cx, cy, angleDeg, isActive, isHovered, color,
+}: {
+  cx: number
+  cy: number
+  angleDeg: number
+  isActive: boolean
+  isHovered: boolean
+  color: string
+}) {
+  const rad = degToRad(angleDeg)
+  // Tangent direction (along the ring arc)
+  const tx = -Math.sin(rad)
+  const ty = Math.cos(rad)
+  // Radial direction (across the ring)
+  const rx = Math.cos(rad)
+  const ry = Math.sin(rad)
+
+  const SPACING = 3.5   // gap between lines along the tangent
+  const HALF_LEN = 7    // half-length of each line across the ring
+
+  const stroke = isActive
+    ? color
+    : isHovered
+      ? 'rgba(255,255,255,0.9)'
+      : 'rgba(255,255,255,0.55)'
+  const strokeW = isActive ? 2.5 : isHovered ? 2 : 1.8
+
+  return (
+    <g className="pointer-events-none">
+      {[-1, 0, 1].map((i) => {
+        const ox = cx + i * SPACING * tx
+        const oy = cy + i * SPACING * ty
+        return (
+          <line
+            key={i}
+            x1={ox - HALF_LEN * rx}
+            y1={oy - HALF_LEN * ry}
+            x2={ox + HALF_LEN * rx}
+            y2={oy + HALF_LEN * ry}
+            stroke={stroke}
+            strokeWidth={strokeW}
+            strokeLinecap="round"
+            style={{ transition: 'stroke 0.15s ease, stroke-width 0.15s ease' }}
+          />
+        )
+      })}
+      {/* Active glow */}
+      {isActive && (
+        <circle
+          cx={cx}
+          cy={cy}
+          r={12}
+          fill={color}
+          opacity={0.15}
+        />
+      )}
     </g>
   )
 }
