@@ -40,9 +40,9 @@ export default function TaskCreatorModal({ onDone, onCancel }: TaskCreatorModalP
             />
 
             {/* Round modal */}
-            <div className="relative animate-modal-circle-in w-72 h-72 rounded-full bg-white/90 backdrop-blur-xl shadow-2xl shadow-black/10 border border-white/60 flex flex-col items-center justify-center gap-4 p-8">
+            <div className="relative animate-modal-circle-in w-72 h-72 rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur-xl shadow-2xl shadow-black/10 border border-white/60 dark:border-white/10 flex flex-col items-center justify-center gap-4 p-8">
                 {/* Title */}
-                <span className="text-sm font-semibold text-gray-500 tracking-wide">
+                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wide">
                     New Task
                 </span>
 
@@ -55,7 +55,7 @@ export default function TaskCreatorModal({ onDone, onCancel }: TaskCreatorModalP
                     onKeyDown={handleKeyDown}
                     placeholder="What needs doing?"
                     disabled={saving}
-                    className="w-full text-center text-base font-medium text-gray-700 bg-transparent border-b-2 border-gray-200 focus:border-purple-300 outline-none py-2 placeholder:text-gray-300 transition-colors disabled:opacity-50"
+                    className="w-full text-center text-base font-medium text-gray-700 dark:text-white bg-transparent border-b-2 border-gray-200 dark:border-white/10 focus:border-purple-300 dark:focus:border-purple-500 outline-none py-2 placeholder:text-gray-300 dark:placeholder:text-gray-600 transition-colors disabled:opacity-50"
                     maxLength={60}
                 />
 

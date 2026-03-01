@@ -14,19 +14,11 @@ import type { CalendarEvent, Position, TimeGap, TimeFormat } from './types'
 // ─── Dynamic rotation offset ─────────────────────────────────────
 
 /**
- * Compute the angle offset that centers the active window on the ring.
- * The midpoint of the active hours maps to 90° (bottom / 6-o'clock).
+ * Static clock logic - 00:00 is fixed at the top.
+ * We return 0 so the dial doesn't rotate with active hours.
  */
-export function computeAngleOffset(activeStart: number, activeEnd: number): number {
-  let activeMid: number
-  if (activeEnd > activeStart) {
-    activeMid = (activeStart + activeEnd) / 2
-  } else {
-    // Wraps through midnight (e.g. active 7 AM → midnight)
-    const duration = (24 - activeStart) + activeEnd
-    activeMid = (activeStart + duration / 2) % 24
-  }
-  return 180 - (activeMid / TOTAL_HOURS) * 360
+export function computeAngleOffset(_activeStart: number, _activeEnd: number): number {
+  return 0
 }
 
 // ─── Angle / position helpers ────────────────────────────────────
@@ -75,9 +67,78 @@ export function arcPath(
 ): string {
   const start = polar(cx, cy, r, startAngle)
   const end = polar(cx, cy, r, endAngle)
-  const sweep = endAngle - startAngle
+
+  let sweep = (endAngle - startAngle) % 360
+  if (sweep < 0) sweep += 360
+
   const large = sweep > 180 ? 1 : 0
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${end.x} ${end.y}`
+}
+
+/**
+ * Generates a closed SVG path for a polar segment ("Bubbly Brick").
+ * Instead of semicircular ends, it uses specified corner radii.
+ */
+export function bubblePath(
+  cx: number,
+  cy: number,
+  innerR: number,
+  outerR: number,
+  startAngle: number,
+  endAngle: number,
+  cornerRadius = 12
+): string {
+  let sweep = (endAngle - startAngle) % 360
+  if (sweep < 0) sweep += 360
+  if (sweep === 0) return ""
+
+  // Adjust corner radius for small segments to avoid geometry overlap
+  // A safety margin: cornerRadius shouldn't exceed half the thickness/width
+  const thickness = outerR - innerR
+  const arcLen = (sweep / 360) * 2 * Math.PI * innerR
+  const maxCr = Math.min(cornerRadius, thickness / 2.1, arcLen / 2.1)
+  const cr = Math.max(2, maxCr)
+
+  // Angular offsets for corners at inner and outer radii
+  const daInner = (cr / innerR) * (180 / Math.PI)
+  const daOuter = (cr / outerR) * (180 / Math.PI)
+
+  // Points for 8-point "Bubbly Brick"
+  // S = Start Face, E = End Face
+  // O = Outer, I = Inner
+  // C = Corner-inset point (on the radial line)
+
+  // 1. Outer Start
+  const p1 = polar(cx, cy, outerR, startAngle + daOuter)
+  // 2. Outer End
+  const p2 = polar(cx, cy, outerR, endAngle - daOuter)
+  // 3. End-Face Outer Corner
+  const pE1 = polar(cx, cy, outerR - cr, endAngle)
+  // 4. End-Face Inner Corner
+  const pE2 = polar(cx, cy, innerR + cr, endAngle)
+  // 5. Inner End
+  const p3 = polar(cx, cy, innerR, endAngle - daInner)
+  // 6. Inner Start
+  const p4 = polar(cx, cy, innerR, startAngle + daInner)
+  // 7. Start-Face Inner Corner
+  const pS2 = polar(cx, cy, innerR + cr, startAngle)
+  // 8. Start-Face Outer Corner
+  const pS1 = polar(cx, cy, outerR - cr, startAngle)
+
+  const large = sweep > 180 ? 1 : 0
+
+  return `
+    M ${p1.x} ${p1.y}
+    A ${outerR} ${outerR} 0 ${large} 1 ${p2.x} ${p2.y}
+    A ${cr} ${cr} 0 0 1 ${pE1.x} ${pE1.y}
+    L ${pE2.x} ${pE2.y}
+    A ${cr} ${cr} 0 0 1 ${p3.x} ${p3.y}
+    A ${innerR} ${innerR} 0 ${large} 0 ${p4.x} ${p4.y}
+    A ${cr} ${cr} 0 0 1 ${pS2.x} ${pS2.y}
+    L ${pS1.x} ${pS1.y}
+    A ${cr} ${cr} 0 0 1 ${p1.x} ${p1.y}
+    Z
+  `.replace(/\s+/g, ' ').trim()
 }
 
 export function arcLength(startH: number, endH: number): number {
@@ -100,6 +161,16 @@ export function clientToSVG(svg: SVGSVGElement, clientX: number, clientY: number
   if (!ctm) return { x: clientX, y: clientY }
   const svgPt = pt.matrixTransform(ctm)
   return { x: svgPt.x, y: svgPt.y }
+}
+
+export function svgToClient(svg: SVGSVGElement, x: number, y: number): Position {
+  const pt = svg.createSVGPoint()
+  pt.x = x
+  pt.y = y
+  const ctm = svg.getScreenCTM()
+  if (!ctm) return { x, y }
+  const clientPt = pt.matrixTransform(ctm)
+  return { x: clientPt.x, y: clientPt.y }
 }
 
 // ─── Ring hit testing ────────────────────────────────────────────

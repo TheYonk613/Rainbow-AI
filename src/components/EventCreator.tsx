@@ -92,9 +92,9 @@ export default function EventCreator({
         className="fixed z-50 animate-pop-in"
         style={{ left, top, width: popWidth }}
       >
-        <div className="bg-white rounded-2xl shadow-xl shadow-black/8 border border-gray-100 p-5 space-y-4">
+        <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-xl shadow-black/8 dark:shadow-black/40 border border-gray-100 dark:border-white/10 p-5 space-y-4">
           {/* Time display */}
-          <div className="text-xs font-mono text-gray-400 tracking-wide">
+          <div className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wide">
             {formatTime(startH, timeFormat)} — {formatTime(endH, timeFormat)}
           </div>
 
@@ -106,28 +106,26 @@ export default function EventCreator({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full text-lg font-semibold text-gray-800 placeholder:text-gray-300 bg-transparent border-none outline-none"
+            className="w-full text-lg font-semibold text-gray-800 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent border-none outline-none"
           />
 
           {/* Type toggle */}
           <div className="flex gap-2">
             <button
               onClick={() => setType('fluid')}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                type === 'fluid'
-                  ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200'
-                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-              }`}
+              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${type === 'fluid'
+                  ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/30'
+                  : 'bg-gray-50 text-gray-400 dark:bg-white/5 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10'
+                }`}
             >
               Fluid
             </button>
             <button
               onClick={() => setType('solid')}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                type === 'solid'
-                  ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-200'
-                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-              }`}
+              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${type === 'solid'
+                  ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:ring-rose-500/30'
+                  : 'bg-gray-50 text-gray-400 dark:bg-white/5 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10'
+                }`}
             >
               Solid
             </button>
@@ -139,11 +137,10 @@ export default function EventCreator({
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                className={`w-7 h-7 rounded-full transition-all ${
-                  color === c
-                    ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
+                className={`w-7 h-7 rounded-full transition-all ${color === c
+                    ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-offset-[#1e1e1e] dark:ring-white/50 scale-110'
                     : 'hover:scale-110 opacity-60 hover:opacity-100'
-                }`}
+                  }`}
                 style={{ backgroundColor: c }}
               />
             ))}

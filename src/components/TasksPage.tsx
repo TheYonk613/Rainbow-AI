@@ -198,7 +198,7 @@ export default function TasksPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
                     >
-                        <p className="text-gray-300 text-sm font-medium tracking-wide">
+                        <p className="text-gray-300 dark:text-gray-600 text-sm font-medium tracking-wide">
                             tap + to float a task
                         </p>
                     </motion.div>
@@ -239,7 +239,7 @@ export default function TasksPage() {
                     onClick={() => setShowCreator(true)}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
-                    className="w-16 h-16 rounded-full bg-white/80 backdrop-blur-xl shadow-2xl shadow-black/10 border border-white/60 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-shadow cursor-pointer group"
+                    className="w-16 h-16 rounded-full bg-white/80 dark:bg-white/10 backdrop-blur-xl shadow-2xl shadow-black/10 border border-white/60 dark:border-white/10 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 transition-shadow cursor-pointer group"
                     aria-label="Add new task"
                 >
                     <svg

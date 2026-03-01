@@ -1,0 +1,23 @@
+# Rainbow AI - Feature Implementation Summary
+
+This document tracks the technical and design improvements made during our recent coding sessions.
+
+## 1. Settings Menu & Pull-Down Interaction
+*   **Apple-Style Draggable Sheet**: Replaced the static settings modal with a smooth, interactive "pull-down" sheet using `framer-motion`.
+*   **Haptic Drag Physics**: Implemented spring physics and gesture thresholds that mimic native iOS behavior, allowing for a "buttery" and tactile closing experience.
+*   **Hitbox Sync Fix**: Resolved a critical "glitching" bug where the interactive bounds were desynchronized from the visual position of the menu.
+*   **Dark Mode Integration**: The settings screen now dynamically adapts its background, text colors, and UI elements when toggling between light and dark modes.
+
+## 2. Orbital Clock Logic Improvements
+*   **00:00 Centering**: Corrected the radial offset logic to ensure that 00:00 (Midnight) is perfectly centered at the top of the ring (12 o'clock position).
+*   **Time Label Accuracy**: Fixed a bug in the settings preview where time markers around the ring were slightly misaligned with their actual hourly positions.
+
+## 3. Current Time Indicator (Precision Needle)
+*   **Visual Refresh**: Replaced the original simple red dot with a premium, high-precision "needle" indicator.
+*   **Ring Integration**: The needle is custom-drawn to span the exact 80px thickness of the 24-hour ring, providing a clear "slice" of the current time.
+*   **"Breathing" Pulse Animation**: Added a rhythmic opacity pulse (heartbeat) that makes the indicator feel alive and easy to track without being visually distracting.
+*   **Precision Needle Overshoot**: Added a subtle 4px overshoot on both the inner and outer edges of the ring for maximum visibility against varied background colors.
+
+## 4. UI/UX Polishing
+*   **Mobile & Desktop Symmetry**: Refined the interaction logic to ensure the settings drag gestures feel equally smooth on touch screens and with mouse input.
+*   **Premium Aesthetic**: Shifted from generic colors and basic shapes to high-contrast, semi-transparent dark masks and precision-engineered SVG elements.

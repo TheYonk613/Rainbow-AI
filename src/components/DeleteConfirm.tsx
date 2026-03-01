@@ -34,7 +34,7 @@ export default function DeleteConfirm({
 
       {/* Centered dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="animate-pop-in bg-white rounded-2xl shadow-2xl shadow-black/8 border border-gray-100 w-full max-w-xs overflow-hidden">
+        <div className="animate-pop-in bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-2xl shadow-black/8 dark:shadow-black/40 border border-gray-100 dark:border-white/10 w-full max-w-xs overflow-hidden">
           {/* Color accent bar — identifies the event visually */}
           <div
             className="h-2 w-full"
@@ -44,16 +44,16 @@ export default function DeleteConfirm({
           <div className="p-6 space-y-4">
             {/* Event info */}
             <div className="text-center space-y-1">
-              <h3 className="text-lg font-semibold text-gray-800">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
                 {event.title}
               </h3>
-              <p className="text-sm text-gray-400 font-mono">
+              <p className="text-sm text-gray-400 dark:text-gray-500 font-mono">
                 {formatTime(event.startH, timeFormat)} — {formatTime(event.endH, timeFormat)}
               </p>
             </div>
 
             {/* Question */}
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
               Remove this event from your day?
             </p>
 
@@ -61,7 +61,7 @@ export default function DeleteConfirm({
             <div className="flex gap-3">
               <button
                 onClick={onCancel}
-                className="flex-1 py-3 rounded-xl text-sm font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 transition-all active:scale-[0.97]"
+                className="flex-1 py-3 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 transition-all active:scale-[0.97]"
               >
                 Keep
               </button>

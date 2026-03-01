@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import type { CalendarEvent, TimeFormat } from './types'
 import { SAMPLE_EVENTS, DEFAULT_ACTIVE_START, DEFAULT_ACTIVE_END } from './constants'
 import { useCurrentTime } from './hooks/useCurrentTime'
@@ -19,6 +20,7 @@ interface PersistedSettings {
   activeEnd: number
   timeFormat: TimeFormat
   allowOverlap: boolean
+  darkMode: boolean
 }
 
 function loadSettings(): PersistedSettings {
@@ -31,6 +33,7 @@ function loadSettings(): PersistedSettings {
         activeEnd: parsed.activeEnd ?? DEFAULT_ACTIVE_END,
         timeFormat: parsed.timeFormat ?? '24h',
         allowOverlap: parsed.allowOverlap ?? false,
+        darkMode: parsed.darkMode ?? false,
       }
     }
   } catch {
@@ -42,6 +45,7 @@ function loadSettings(): PersistedSettings {
     activeEnd: DEFAULT_ACTIVE_END,
     timeFormat: '24h',
     allowOverlap: false,
+    darkMode: false,
   }
 }
 
@@ -63,6 +67,7 @@ export default function App() {
     anchorX: number
     anchorY: number
   } | null>(null)
+  const [lastMenuPos, setLastMenuPos] = useState<{ x: number, y: number } | null>(null)
   const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null)
 
   useEffect(() => {
@@ -83,6 +88,10 @@ export default function App() {
 
   const handleAllowOverlapChange = useCallback((v: boolean) => {
     setSettings((prev) => ({ ...prev, allowOverlap: v }))
+  }, [])
+
+  const toggleDarkMode = useCallback(() => {
+    setSettings((prev) => ({ ...prev, darkMode: !prev.darkMode }))
   }, [])
 
   const handleGapClick = useCallback(
@@ -124,7 +133,6 @@ export default function App() {
     }, POP_DURATION_MS)
   }, [deleteTarget])
 
-  const handleCancelDelete = useCallback(() => setDeleteTarget(null), [])
 
   const handleEventTimeChange = useCallback((id: string, startH: number, endH: number) => {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, startH, endH } : e)))
@@ -133,6 +141,16 @@ export default function App() {
   const handleRenameEvent = useCallback((id: string, newTitle: string) => {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, title: newTitle } : e)))
     setEditTarget(null)
+    setActionTarget((prev) =>
+      prev && prev.event.id === id ? { ...prev, event: { ...prev.event, title: newTitle } } : prev
+    )
+  }, [])
+
+  const handleUpdateNotes = useCallback((id: string, notes: string) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, notes } : e)))
+    setActionTarget((prev) =>
+      prev && prev.event.id === id ? { ...prev, event: { ...prev.event, notes } } : prev
+    )
   }, [])
 
   const handleColorChange = useCallback((id: string, color: string) => {
@@ -142,6 +160,38 @@ export default function App() {
       prev && prev.event.id === id ? { ...prev, event: { ...prev.event, color } } : prev
     )
   }, [])
+
+  const handleEditEvent = useCallback((event: CalendarEvent) => {
+    setEditTarget(event)
+    setActionTarget(null)
+  }, [])
+
+  const handleTimeChange = useCallback((id: string, startH: number, endH: number) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, startH, endH } : e)))
+    setActionTarget((prev) =>
+      prev && prev.event.id === id ? { ...prev, event: { ...prev.event, startH, endH } } : prev
+    )
+  }, [])
+
+  const handleDeleteEvent = useCallback((event: CalendarEvent) => {
+    setDeleteTarget(event)
+    // Save position to reopen if cancelled
+    setActionTarget((prev) => {
+      if (prev) setLastMenuPos({ x: prev.anchorX, y: prev.anchorY })
+      return null
+    })
+  }, [])
+
+  const handleCloseActionMenu = useCallback(() => {
+    setActionTarget(null)
+  }, [])
+
+  const handleCancelDelete = useCallback(() => {
+    if (deleteTarget && lastMenuPos) {
+      setActionTarget({ event: deleteTarget, anchorX: lastMenuPos.x, anchorY: lastMenuPos.y })
+    }
+    setDeleteTarget(null)
+  }, [deleteTarget, lastMenuPos])
 
   // Close ring-only overlays when leaving the day view
   useEffect(() => {
@@ -154,11 +204,28 @@ export default function App() {
   }, [page])
 
   return (
-    <div className="min-h-screen bg-[#f7f6f3] bg-noise flex flex-col">
-      <header className="flex items-center justify-center pt-8 pb-2">
+    <div className={`min-h-screen transition-colors duration-500 flex flex-col ${settings.darkMode ? 'dark bg-[#121212]' : 'bg-[#f7f6f3]'} bg-noise`}>
+      <header className="flex items-center justify-center pt-8 pb-2 relative">
+        <button
+          onClick={toggleDarkMode}
+          className="absolute left-6 top-8 w-10 h-10 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:scale-110 transition-all active:scale-95 active:bg-black/5 dark:active:bg-white/10 z-30"
+          aria-label="Toggle Dark Mode"
+        >
+          {settings.darkMode ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5" />
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
+        </button>
+
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E07B6C] via-[#8B8FD8] to-[#8BA89A]" />
-          <h1 className="text-lg font-semibold text-gray-700 tracking-tight">Ra1nbow</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight transition-colors">Ra1nbow</h1>
         </div>
       </header>
 
@@ -181,7 +248,7 @@ export default function App() {
             </div>
           </main>
 
-          <footer className="text-center pb-6 text-xs text-gray-300 font-mono">
+          <footer className="text-center pb-6 text-xs text-gray-300 dark:text-gray-600 font-mono transition-colors">
             drag events to move • pull edges to resize • click gaps to add
           </footer>
         </>
@@ -193,7 +260,7 @@ export default function App() {
       <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2">
         <a
           href="/mockup.html"
-          className="h-10 px-4 rounded-full bg-white/80 backdrop-blur shadow-lg shadow-black/5 border border-gray-100 flex items-center gap-2 text-gray-400 hover:text-gray-600 hover:scale-105 transition-all active:scale-95 no-underline text-xs font-semibold tracking-wide"
+          className="h-10 px-4 rounded-full bg-white/80 dark:bg-white/10 backdrop-blur shadow-lg shadow-black/5 dark:shadow-white/5 border border-gray-100 dark:border-white/10 flex items-center gap-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:scale-105 transition-all active:scale-95 no-underline text-xs font-semibold tracking-wide"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="3" width="20" height="18" rx="3" />
@@ -204,11 +271,10 @@ export default function App() {
 
         <button
           onClick={() => setPage(page === 'day' ? 'tasks' : 'day')}
-          className={`h-10 px-4 rounded-full backdrop-blur shadow-lg shadow-black/5 border flex items-center gap-2 hover:scale-105 transition-all active:scale-95 text-xs font-semibold tracking-wide cursor-pointer ${
-            page === 'tasks'
-              ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white border-white/30'
-              : 'bg-white/80 text-gray-400 hover:text-gray-600 border-gray-100'
-          }`}
+          className={`h-10 px-4 rounded-full backdrop-blur shadow-lg shadow-black/5 border flex items-center gap-2 hover:scale-105 transition-all active:scale-95 text-xs font-semibold tracking-wide cursor-pointer ${page === 'tasks'
+            ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white border-white/30'
+            : 'bg-white/80 dark:bg-white/10 text-gray-400 dark:text-gray-300 dark:hover:text-white hover:text-gray-600 border-gray-100 dark:border-white/10'
+            }`}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="6" r="4" />
@@ -220,7 +286,7 @@ export default function App() {
 
       <button
         onClick={() => setShowSettings(true)}
-        className="fixed bottom-6 right-6 w-10 h-10 rounded-full bg-white/80 backdrop-blur shadow-lg shadow-black/5 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:scale-110 transition-all active:scale-95 z-30"
+        className="fixed bottom-6 right-6 w-10 h-10 rounded-full bg-white/80 dark:bg-white/10 backdrop-blur shadow-lg shadow-black/5 dark:shadow-white/5 border border-gray-100 dark:border-white/10 flex items-center justify-center text-gray-400 dark:text-gray-300 dark:hover:text-white hover:text-gray-600 hover:scale-110 transition-all active:scale-95 z-30"
         aria-label="Settings"
       >
         <svg
@@ -255,11 +321,13 @@ export default function App() {
           event={actionTarget.event}
           anchorX={actionTarget.anchorX}
           anchorY={actionTarget.anchorY}
-          timeFormat={settings.timeFormat}
           onColorChange={handleColorChange}
-          onEdit={(event) => setEditTarget(event)}
-          onDelete={(event) => setDeleteTarget(event)}
-          onClose={() => setActionTarget(null)}
+          onTitleChange={handleRenameEvent}
+          onNotesChange={handleUpdateNotes}
+          onTimeChange={handleTimeChange}
+          onEdit={handleEditEvent}
+          onDelete={handleDeleteEvent}
+          onClose={handleCloseActionMenu}
         />
       )}
 
@@ -279,19 +347,22 @@ export default function App() {
           onCancel={handleCancelDelete}
         />
       )}
-      {showSettings && (
-        <Settings
-          activeStart={settings.activeStart}
-          activeEnd={settings.activeEnd}
-          timeFormat={settings.timeFormat}
-          allowOverlap={settings.allowOverlap}
-          onActiveStartChange={handleActiveStartChange}
-          onActiveEndChange={handleActiveEndChange}
-          onTimeFormatChange={handleTimeFormatChange}
-          onAllowOverlapChange={handleAllowOverlapChange}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
+      <AnimatePresence mode="wait">
+        {showSettings && (
+          <Settings
+            key="settings"
+            activeStart={settings.activeStart}
+            activeEnd={settings.activeEnd}
+            timeFormat={settings.timeFormat}
+            allowOverlap={settings.allowOverlap}
+            onActiveStartChange={handleActiveStartChange}
+            onActiveEndChange={handleActiveEndChange}
+            onTimeFormatChange={handleTimeFormatChange}
+            onAllowOverlapChange={handleAllowOverlapChange}
+            onClose={() => setShowSettings(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
