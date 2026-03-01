@@ -50,7 +50,7 @@ function loadSettings(): PersistedSettings {
 }
 
 export default function App() {
-  const [page, setPage] = useState<'day' | 'tasks'>('day')
+  const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon'>('orbit')
   const [events, setEvents] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
   const [showSettings, setShowSettings] = useState(false)
   const currentTime = useCurrentTime()
@@ -116,9 +116,9 @@ export default function App() {
   const handleCancelCreate = useCallback(() => setCreator(null), [])
 
   const handleEventClick = useCallback((event: CalendarEvent, clientX: number, clientY: number) => {
-    if (page !== 'day') return
+    if (mode !== 'orbit') return
     setActionTarget({ event, anchorX: clientX, anchorY: clientY })
-  }, [page])
+  }, [mode])
 
   const handleConfirmDelete = useCallback(() => {
     if (!deleteTarget) return
@@ -161,77 +161,43 @@ export default function App() {
     )
   }, [])
 
-  const handleEditEvent = useCallback((event: CalendarEvent) => {
-    setEditTarget(event)
-    setActionTarget(null)
-  }, [])
-
-  const handleTimeChange = useCallback((id: string, startH: number, endH: number) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, startH, endH } : e)))
-    setActionTarget((prev) =>
-      prev && prev.event.id === id ? { ...prev, event: { ...prev.event, startH, endH } } : prev
-    )
-  }, [])
-
-  const handleDeleteEvent = useCallback((event: CalendarEvent) => {
-    setDeleteTarget(event)
-    // Save position to reopen if cancelled
-    setActionTarget((prev) => {
-      if (prev) setLastMenuPos({ x: prev.anchorX, y: prev.anchorY })
-      return null
-    })
-  }, [])
-
-  const handleCloseActionMenu = useCallback(() => {
-    setActionTarget(null)
-  }, [])
-
-  const handleCancelDelete = useCallback(() => {
-    if (deleteTarget && lastMenuPos) {
-      setActionTarget({ event: deleteTarget, anchorX: lastMenuPos.x, anchorY: lastMenuPos.y })
-    }
-    setDeleteTarget(null)
-  }, [deleteTarget, lastMenuPos])
-
-  // Close ring-only overlays when leaving the day view
+  // Close ring-only overlays when leaving the orbit view
   useEffect(() => {
-    if (page !== 'day') {
+    if (mode !== 'orbit') {
       setCreator(null)
       setDeleteTarget(null)
       setActionTarget(null)
       setEditTarget(null)
     }
-  }, [page])
+  }, [mode])
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 flex flex-col ${settings.darkMode ? 'dark bg-[#121212]' : 'bg-[#f7f6f3]'} bg-noise`}>
-      <header className="flex items-center justify-center pt-8 pb-2 relative">
-        <button
-          onClick={toggleDarkMode}
-          className="absolute left-6 top-8 w-10 h-10 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:scale-110 transition-all active:scale-95 active:bg-black/5 dark:active:bg-white/10 z-30"
-          aria-label="Toggle Dark Mode"
-        >
-          {settings.darkMode ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5" />
-              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
-          )}
-        </button>
-
+    <div className="min-h-screen bg-[#f7f6f3] bg-noise flex flex-col relative overflow-hidden">
+      {/* Header */}
+      <header className="flex items-center justify-center pt-8 pb-2 relative z-20">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E07B6C] via-[#8B8FD8] to-[#8BA89A]" />
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight transition-colors">Ra1nbow</h1>
         </div>
       </header>
 
-      {page === 'day' ? (
-        <>
-          {/* Ring */}
+      {/* Views Container */}
+      <div className="flex-1 relative w-full h-full">
+        {/* Rainbow View */}
+        <div
+          className={`absolute inset-0 transition-opacity duration-[400ms] flex flex-col items-center justify-center ${mode === 'rainbow' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'
+            }`}
+        >
+          <div className="text-gray-400 font-mono text-sm tracking-widest uppercase">
+            Rainbow Mode Incoming
+          </div>
+        </div>
+
+        {/* Orbit View */}
+        <div
+          className={`absolute inset-0 transition-opacity duration-[400ms] flex flex-col ${mode === 'orbit' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'
+            }`}
+        >
           <main className="flex-1 flex items-center justify-center px-4">
             <div className="w-full max-w-[560px]">
               <DayWheel
@@ -247,14 +213,19 @@ export default function App() {
               />
             </div>
           </main>
-
-          <footer className="text-center pb-6 text-xs text-gray-300 dark:text-gray-600 font-mono transition-colors">
-            drag events to move • pull edges to resize • click gaps to add
+          <footer className="text-center pb-24 text-xs text-gray-300 font-mono">
+            click to create · drag to move · pull edges to resize
           </footer>
-        </>
-      ) : (
-        <TasksPage />
-      )}
+        </div>
+
+        {/* Balloon View */}
+        <div
+          className={`absolute inset-0 transition-opacity duration-[400ms] flex flex-col ${mode === 'balloon' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'
+            }`}
+        >
+          <TasksPage />
+        </div>
+      </div>
 
       {/* Bottom left nav pills */}
       <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2">
@@ -268,19 +239,36 @@ export default function App() {
           </svg>
           Card Mode
         </a>
+      </div>
 
+      {/* Global Persistent Dock (Three Worlds Switcher) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 p-1 rounded-full bg-white/40 backdrop-blur-md shadow-lg shadow-black/5 border border-white/60">
         <button
-          onClick={() => setPage(page === 'day' ? 'tasks' : 'day')}
-          className={`h-10 px-4 rounded-full backdrop-blur shadow-lg shadow-black/5 border flex items-center gap-2 hover:scale-105 transition-all active:scale-95 text-xs font-semibold tracking-wide cursor-pointer ${page === 'tasks'
-            ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white border-white/30'
-            : 'bg-white/80 dark:bg-white/10 text-gray-400 dark:text-gray-300 dark:hover:text-white hover:text-gray-600 border-gray-100 dark:border-white/10'
+          onClick={() => setMode('orbit')}
+          className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-300 ${mode === 'orbit'
+            ? 'bg-white shadow-sm text-gray-800'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
             }`}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="6" r="4" />
-            <path d="M12 10 Q11 16, 12 22" />
-          </svg>
-          {page === 'tasks' ? 'Day View' : 'Tasks'}
+          Orbit
+        </button>
+        <button
+          onClick={() => setMode('rainbow')}
+          className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-300 ${mode === 'rainbow'
+            ? 'bg-gradient-to-r from-[#e58a7d] via-[#a3a6e6] to-[#9ebbb0] text-white shadow-sm'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+            }`}
+        >
+          Rainbow
+        </button>
+        <button
+          onClick={() => setMode('balloon')}
+          className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-300 ${mode === 'balloon'
+            ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white shadow-sm'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+            }`}
+        >
+          Balloon
         </button>
       </div>
 

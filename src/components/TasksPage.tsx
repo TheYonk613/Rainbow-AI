@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import TaskBalloon, { getBalloonPosition, KNOT_Y_IN_SVG, SVG_H } from './TaskBalloon'
 import TaskCreatorModal from './TaskCreatorModal'
 import TaskEditModal, { type Task } from './TaskEditModal'
+import BalloonParticles from './BalloonParticles'
+import MigratingText from './MigratingText'
 
 const BALLOON_COLORS = [
     '#FF6B6B', '#4ECDC4', '#FFD93D', '#6BCB77',
@@ -48,11 +50,18 @@ interface Layout {
     buttonY: number
 }
 
+interface PoppingTask {
+    task: Task
+    startX: number
+    startY: number
+}
+
 export default function TasksPage() {
     const [tasks, setTasks] = useState<Task[]>(loadTasks)
     const [showCreator, setShowCreator] = useState(false)
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+    const [poppingTasks, setPoppingTasks] = useState<PoppingTask[]>([])
 
     // Persist on every task change
     useEffect(() => { saveTasks(tasks) }, [tasks])
@@ -141,6 +150,29 @@ export default function TasksPage() {
         setEditingTaskId(null)
     }, [editingTaskId])
 
+    // Poetic Pop (Hold to complete)
+    const handlePop = useCallback((task: Task, index: number) => {
+        // Snapshot the current knot position in screen coordinates
+        const pos = positionsRef.current.get(task.id)
+        if (!pos || !pageRef.current) return
+
+        const pR = pageRef.current.getBoundingClientRect()
+        const { scale } = getBalloonPosition(index, tasks.length)
+        const knotX = layout.areaCenterX + pos.x + pR.left
+        const knotY = layout.areaBottomY + pos.y - (SVG_H - KNOT_Y_IN_SVG) * scale + pR.top
+
+        // Add to popping layer for particles and text
+        setPoppingTasks(prev => [...prev, { task, startX: knotX, startY: knotY }])
+
+        // Immediately remove from active tasks so the cluster re-balances naturally
+        setTasks(prev => prev.filter(t => t.id !== task.id))
+        setHoveredIndex(null)
+    }, [tasks.length, layout])
+
+    const finishMigration = useCallback((taskId: string) => {
+        setPoppingTasks(prev => prev.filter(p => p.task.id !== taskId))
+    }, [])
+
     // Compute the viewport coords of the balloon knot so the modal
     // can unfold from the right spot
     const getEditOrigin = () => {
@@ -224,6 +256,7 @@ export default function TasksPage() {
                             onHoverStart={() => setHoveredIndex(i)}
                             onHoverEnd={() => setHoveredIndex(null)}
                             onClick={() => setEditingTaskId(task.id)}
+                            onPop={() => handlePop(task, i)}
                             isEditing={editingTaskId === task.id}
                             isBlurred={editingTaskId !== null && editingTaskId !== task.id}
                             onPositionUpdate={handlePositionUpdate(task.id)}
@@ -233,7 +266,7 @@ export default function TasksPage() {
             </div>
 
             {/* "+" Button */}
-            <div className="pb-10 pt-2 relative" style={{ zIndex: 20 }}>
+            <div className="pb-28 pt-2 relative" style={{ zIndex: 20 }}>
                 <motion.button
                     ref={buttonRef}
                     onClick={() => setShowCreator(true)}
@@ -277,6 +310,21 @@ export default function TasksPage() {
                     />
                 )}
             </AnimatePresence>
+
+            {/* Popping / Migrating Tasks layer */}
+            {poppingTasks.map(({ task, startX, startY }) => (
+                <div key={`popping-${task.id}`}>
+                    <BalloonParticles color={task.color} startX={startX} startY={startY} />
+                    <MigratingText
+                        text={task.text}
+                        startX={startX}
+                        startY={startY}
+                        targetX={window.innerWidth - 80}
+                        targetY={80}
+                        onComplete={() => finishMigration(task.id)}
+                    />
+                </div>
+            ))}
         </div>
     )
 }
