@@ -289,12 +289,12 @@ export default function App() {
       </div>
 
       {/* Global Persistent Dock (Three Worlds Switcher) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 p-1 rounded-full bg-white/40 backdrop-blur-md shadow-lg shadow-black/5 border border-white/60">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 p-1.5 rounded-full bg-white/70 dark:bg-[#1A1A1A]/80 backdrop-blur-xl shadow-2xl shadow-black/10 border border-white/20 dark:border-white/5 transition-colors duration-500">
         <button
           onClick={() => setMode('orbit')}
           className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-300 ${mode === 'orbit'
-            ? 'bg-white shadow-sm text-gray-800'
-            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+            ? 'bg-white dark:bg-white/10 shadow-md dark:shadow-none text-gray-900 dark:text-white'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-white/5'
             }`}
         >
           Orbit
@@ -302,8 +302,8 @@ export default function App() {
         <button
           onClick={() => setMode('rainbow')}
           className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-300 ${mode === 'rainbow'
-            ? 'bg-gradient-to-r from-[#e58a7d] via-[#a3a6e6] to-[#9ebbb0] text-white shadow-sm'
-            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+            ? 'bg-gradient-to-r from-[#e58a7d] via-[#a3a6e6] to-[#9ebbb0] text-white shadow-md'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-white/5'
             }`}
         >
           Rainbow
@@ -311,8 +311,8 @@ export default function App() {
         <button
           onClick={() => setMode('balloon')}
           className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-300 ${mode === 'balloon'
-            ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white shadow-sm'
-            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+            ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white shadow-md'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-white/5'
             }`}
         >
           Balloon
