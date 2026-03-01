@@ -671,6 +671,7 @@ export default function DayWheel({
             stroke="rgba(0,0,0,0.08)"
             strokeWidth={1.5}
             strokeDasharray="4 3"
+            className="dark:fill-white/5 dark:stroke-white/20"
           />
           <text
             x={hoverPos.x}
@@ -681,6 +682,7 @@ export default function DayWheel({
             fontSize="10"
             fontWeight="600"
             fontFamily="monospace"
+            className="dark:fill-gray-400"
           >
             +
           </text>
@@ -703,7 +705,7 @@ function TimePill({ hour, angle, fmt }: { hour: number; angle: number; fmt: Time
       className="time-label-pill pointer-events-none"
       style={{ transformOrigin: `${x}px ${y}px` }}
     >
-      <rect x={x - 26} y={y - 9} width={52} height={18} rx={9} fill="rgba(0,0,0,0.65)" />
+      <rect x={x - 26} y={y - 9} width={52} height={18} rx={9} fill="rgba(0,0,0,0.65)" className="dark:fill-white/20 dark:stroke-white/10" stroke="none" />
       <text
         x={x}
         y={y}
@@ -713,7 +715,7 @@ function TimePill({ hour, angle, fmt }: { hour: number; angle: number; fmt: Time
         fontSize="9"
         fontWeight="600"
         fontFamily="monospace"
-        className="select-none"
+        className="select-none dark:fill-gray-100"
       >
         {formatTime(hour, fmt)}
       </text>

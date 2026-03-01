@@ -161,6 +161,38 @@ export default function App() {
     )
   }, [])
 
+  const handleEditEvent = useCallback((event: CalendarEvent) => {
+    setEditTarget(event)
+    setActionTarget(null)
+  }, [])
+
+  const handleTimeChange = useCallback((id: string, startH: number, endH: number) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, startH, endH } : e)))
+    setActionTarget((prev) =>
+      prev && prev.event.id === id ? { ...prev, event: { ...prev.event, startH, endH } } : prev
+    )
+  }, [])
+
+  const handleDeleteEvent = useCallback((event: CalendarEvent) => {
+    setDeleteTarget(event)
+    // Save position to reopen if cancelled
+    setActionTarget((prev) => {
+      if (prev) setLastMenuPos({ x: prev.anchorX, y: prev.anchorY })
+      return null
+    })
+  }, [])
+
+  const handleCloseActionMenu = useCallback(() => {
+    setActionTarget(null)
+  }, [])
+
+  const handleCancelDelete = useCallback(() => {
+    if (deleteTarget && lastMenuPos) {
+      setActionTarget({ event: deleteTarget, anchorX: lastMenuPos.x, anchorY: lastMenuPos.y })
+    }
+    setDeleteTarget(null)
+  }, [deleteTarget, lastMenuPos])
+
   // Close ring-only overlays when leaving the orbit view
   useEffect(() => {
     if (mode !== 'orbit') {
@@ -172,9 +204,24 @@ export default function App() {
   }, [mode])
 
   return (
-    <div className="min-h-screen bg-[#f7f6f3] bg-noise flex flex-col relative overflow-hidden">
-      {/* Header */}
+    <div className={`min-h-screen transition-colors duration-500 flex flex-col ${settings.darkMode ? 'dark bg-[#121212]' : 'bg-[#f7f6f3]'} bg-noise`}>
       <header className="flex items-center justify-center pt-8 pb-2 relative z-20">
+        <button
+          onClick={toggleDarkMode}
+          className="absolute left-6 top-8 w-10 h-10 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:scale-110 transition-all active:scale-95 active:bg-black/5 dark:active:bg-white/10 z-30"
+          aria-label="Toggle Dark Mode"
+        >
+          {settings.darkMode ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5" />
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
+        </button>
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E07B6C] via-[#8B8FD8] to-[#8BA89A]" />
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight transition-colors">Ra1nbow</h1>
