@@ -1,5 +1,5 @@
 import { motion, useSpring, useTransform, useMotionValue, animate as fmAnimate } from 'framer-motion'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 interface TaskBalloonProps {
     text: string
@@ -11,6 +11,7 @@ interface TaskBalloonProps {
     onHoverStart: () => void
     onHoverEnd: () => void
     onClick: () => void
+    onPop: () => void
     isEditing: boolean
     isBlurred: boolean
     onPositionUpdate?: (x: number, y: number) => void
@@ -58,7 +59,7 @@ const WIND_DUR = 0.5
 export default function TaskBalloon({
     text, color, index, isNew, total,
     hoveredIndex, onHoverStart, onHoverEnd,
-    onClick, isEditing, isBlurred,
+    onClick, onPop, isEditing, isBlurred,
     onPositionUpdate,
 }: TaskBalloonProps) {
     const { xShift, yShift, scale, tiltDeg } = getBalloonPosition(index, total)
@@ -74,7 +75,6 @@ export default function TaskBalloon({
     const translateX = useTransform(sp, [0, 1], [0, xShift])
     const translateY = useTransform(sp, [0, 1], [0, yShift])
     const scaleVal = useTransform(sp, [0, 1], [0.25, scale])
-    const opacity = useTransform(sp, [0, 0.12, 1], [0, 1, 1])
     const tilt = useTransform(sp, [0, 1], [0, tiltDeg])
 
     // ── Repulsion MotionValues ─────────────────────────────────────────────
@@ -121,6 +121,50 @@ export default function TaskBalloon({
     const swayDuration = useMemo(() => 2.6 + seeded(index + 5) * 2.8, [index])
     const swayDelay = useMemo(() => seeded(index + 9) * -4, [index])
 
+    // ── Poetic Pop (Long Press) ────────────────────────────────────────────
+    const popProgress = useMotionValue(0)
+    const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const animControlsRef = useRef<{ stop: () => void } | null>(null)
+
+    const handlePointerDown = () => {
+        if (isEditing) return
+        popProgress.set(0)
+        animControlsRef.current = fmAnimate(popProgress, 1, { duration: 2, ease: 'easeIn' })
+        holdTimerRef.current = setTimeout(() => {
+            onPop()
+        }, 2000)
+    }
+
+    const cancelHold = () => {
+        if (holdTimerRef.current) {
+            clearTimeout(holdTimerRef.current)
+            holdTimerRef.current = null
+        }
+        if (animControlsRef.current) {
+            animControlsRef.current.stop()
+        }
+        // Smoothly return progress to 0
+        fmAnimate(popProgress, 0, { duration: 0.3 })
+    }
+
+    // Tension jitter mappings
+    // As progress approaches 1, rotate and y jitter increases.
+    // We use a high-frequency sine wave based on the progress.
+    const tensionRotate = useTransform(popProgress, p => {
+        if (p < 0.2) return 0
+        const intensity = (p - 0.2) * 5 // 0 to 4
+        return Math.sin(p * 100) * intensity
+    })
+    const tensionX = useTransform(popProgress, p => {
+        if (p < 0.2) return 0
+        const intensity = (p - 0.2) * 3
+        return Math.cos(p * 130) * intensity
+    })
+
+    // Progress ring stroke offset calculation
+    const RING_CIRCUMFERENCE = 2 * Math.PI * 18
+    const ringOffset = useTransform(popProgress, [0, 1], [RING_CIRCUMFERENCE, 0])
+
     const displayText = text.length > 26 ? text.slice(0, 24) + '…' : text
 
     return (
@@ -146,10 +190,22 @@ export default function TaskBalloon({
                 transition={{ duration: WIND_DUR, ease: WIND_EASE }}
                 onHoverStart={onHoverStart}
                 onHoverEnd={onHoverEnd}
-                onClick={onClick}
+                onPointerDown={handlePointerDown}
+                onPointerUp={() => {
+                    cancelHold()
+                    // Only trigger click if it was a quick tap
+                    if (popProgress.get() < 0.2) onClick()
+                }}
+                onPointerLeave={cancelHold}
             >
-                {/* Layer 3 — idle sway (frozen while editing for readability) */}
+                {/* Layer 3 — idle sway (frozen while editing for readability) + tension jitter */}
                 <motion.div
+                    style={{
+                        transformOrigin: 'bottom center',
+                        cursor: 'pointer',
+                        rotate: tensionRotate,
+                        x: tensionX
+                    }}
                     animate={!isNew && !isEditing ? {
                         rotate: [-(1.5 + seeded(index) * 2), (1.5 + seeded(index) * 2), -(1.5 + seeded(index) * 2)],
                         y: [0, -(2 + seeded(index + 2) * 3), 0],
@@ -157,7 +213,6 @@ export default function TaskBalloon({
                     transition={!isNew && !isEditing ? {
                         duration: swayDuration, repeat: Infinity, ease: 'easeInOut', delay: swayDelay,
                     } : { duration: 0.4 }}
-                    style={{ transformOrigin: 'bottom center', cursor: 'pointer' }}
                 >
                     <svg
                         width={SVG_W} height={SVG_H}
@@ -182,6 +237,21 @@ export default function TaskBalloon({
                         <polygon points="56,127 60,137 64,127"
                             fill={balloonColor.stroke} fillOpacity="0.9"
                         />
+
+                        {/* The tension progress ring at the base of the balloon */}
+                        <motion.circle
+                            cx="60" cy="120" r="18"
+                            fill="none"
+                            stroke="rgba(255,255,255,0.8)"
+                            strokeWidth="3"
+                            strokeDasharray={RING_CIRCUMFERENCE}
+                            style={{
+                                strokeDashoffset: ringOffset,
+                                transformOrigin: '60px 120px',
+                                rotate: -90
+                            }}
+                        />
+
                         <foreignObject x="14" y="32" width="92" height="72">
                             <div style={{
                                 width: '100%', height: '100%',

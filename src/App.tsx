@@ -49,7 +49,7 @@ function loadSettings(): PersistedSettings {
 }
 
 export default function App() {
-  const [page, setPage] = useState<'day' | 'tasks'>('day')
+  const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon'>('orbit')
   const [events, setEvents] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
   const [creator, setCreator] = useState<CreatorState | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null)
@@ -132,9 +132,9 @@ export default function App() {
   )
 
   return (
-    <div className="min-h-screen bg-[#f7f6f3] bg-noise flex flex-col">
+    <div className="min-h-screen bg-[#f7f6f3] bg-noise flex flex-col relative overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-center pt-8 pb-2">
+      <header className="flex items-center justify-center pt-8 pb-2 relative z-20">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E07B6C] via-[#8B8FD8] to-[#8BA89A]" />
           <h1 className="text-lg font-semibold text-gray-700 tracking-tight">
@@ -143,9 +143,23 @@ export default function App() {
         </div>
       </header>
 
-      {page === 'day' ? (
-        <>
-          {/* Ring */}
+      {/* Views Container */}
+      <div className="flex-1 relative w-full h-full">
+        {/* Rainbow View */}
+        <div
+          className={`absolute inset-0 transition-opacity duration-[400ms] flex flex-col items-center justify-center ${mode === 'rainbow' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'
+            }`}
+        >
+          <div className="text-gray-400 font-mono text-sm tracking-widest uppercase">
+            Rainbow Mode Incoming
+          </div>
+        </div>
+
+        {/* Orbit View */}
+        <div
+          className={`absolute inset-0 transition-opacity duration-[400ms] flex flex-col ${mode === 'orbit' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'
+            }`}
+        >
           <main className="flex-1 flex items-center justify-center px-4">
             <div className="w-full max-w-[560px]">
               <DayWheel
@@ -160,15 +174,19 @@ export default function App() {
               />
             </div>
           </main>
-
-          {/* Footer */}
-          <footer className="text-center pb-6 text-xs text-gray-300 font-mono">
+          <footer className="text-center pb-24 text-xs text-gray-300 font-mono">
             click to create · drag to move · pull edges to resize
           </footer>
-        </>
-      ) : (
-        <TasksPage />
-      )}
+        </div>
+
+        {/* Balloon View */}
+        <div
+          className={`absolute inset-0 transition-opacity duration-[400ms] flex flex-col ${mode === 'balloon' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'
+            }`}
+        >
+          <TasksPage />
+        </div>
+      </div>
 
       {/* Bottom left nav pills */}
       <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2">
@@ -182,19 +200,36 @@ export default function App() {
           </svg>
           Card Mode
         </a>
+      </div>
 
+      {/* Global Persistent Dock (Three Worlds Switcher) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 p-1 rounded-full bg-white/40 backdrop-blur-md shadow-lg shadow-black/5 border border-white/60">
         <button
-          onClick={() => setPage(page === 'day' ? 'tasks' : 'day')}
-          className={`h-10 px-4 rounded-full backdrop-blur shadow-lg shadow-black/5 border flex items-center gap-2 hover:scale-105 transition-all active:scale-95 text-xs font-semibold tracking-wide cursor-pointer ${page === 'tasks'
-              ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white border-white/30'
-              : 'bg-white/80 text-gray-400 hover:text-gray-600 border-gray-100'
+          onClick={() => setMode('orbit')}
+          className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-300 ${mode === 'orbit'
+            ? 'bg-white shadow-sm text-gray-800'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
             }`}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="6" r="4" />
-            <path d="M12 10 Q11 16, 12 22" />
-          </svg>
-          {page === 'tasks' ? 'Day View' : 'Tasks'}
+          Orbit
+        </button>
+        <button
+          onClick={() => setMode('rainbow')}
+          className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-300 ${mode === 'rainbow'
+            ? 'bg-gradient-to-r from-[#e58a7d] via-[#a3a6e6] to-[#9ebbb0] text-white shadow-sm'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+            }`}
+        >
+          Rainbow
+        </button>
+        <button
+          onClick={() => setMode('balloon')}
+          className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-300 ${mode === 'balloon'
+            ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white shadow-sm'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+            }`}
+        >
+          Balloon
         </button>
       </div>
 
