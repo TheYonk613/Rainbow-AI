@@ -289,30 +289,30 @@ export default function App() {
       </div>
 
       {/* Global Persistent Dock (Three Worlds Switcher) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 p-1.5 rounded-full bg-white/70 dark:bg-[#1A1A1A]/80 backdrop-blur-xl shadow-2xl shadow-black/10 border border-white/20 dark:border-white/5 transition-colors duration-500">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 p-1.5 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-2xl shadow-2xl shadow-black/15 border border-white/20 dark:border-white/10 transition-all duration-500">
         <button
           onClick={() => setMode('orbit')}
-          className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-200 active:scale-90 ${mode === 'orbit'
-            ? 'bg-white dark:bg-white/15 shadow-md dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] text-gray-900 dark:text-white'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-white/5 active:bg-white/80 dark:active:bg-white/10'
+          className={`h-10 px-6 rounded-full text-sm tracking-wide font-semibold transition-all duration-200 active:scale-90 ${mode === 'orbit'
+            ? 'bg-white dark:bg-white shadow-lg text-gray-900'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/40 dark:hover:bg-white/5'
             }`}
         >
           Orbit
         </button>
         <button
           onClick={() => setMode('rainbow')}
-          className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-200 active:scale-90 ${mode === 'rainbow'
-            ? 'bg-gradient-to-r from-[#e58a7d] via-[#a3a6e6] to-[#9ebbb0] text-white shadow-md shadow-purple-500/20'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-white/5 active:bg-white/80 dark:active:bg-white/10'
+          className={`h-10 px-6 rounded-full text-sm tracking-wide font-semibold transition-all duration-200 active:scale-90 ${mode === 'rainbow'
+            ? 'bg-gradient-to-r from-[#e58a7d] via-[#a3a6e6] to-[#9ebbb0] text-white shadow-lg shadow-purple-500/30'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/40 dark:hover:bg-white/5'
             }`}
         >
           Rainbow
         </button>
         <button
           onClick={() => setMode('balloon')}
-          className={`h-10 px-6 rounded-full text-sm tracking-wide font-medium transition-all duration-200 active:scale-90 ${mode === 'balloon'
-            ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white shadow-md shadow-pink-500/20'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-white/5 active:bg-white/80 dark:active:bg-white/10'
+          className={`h-10 px-6 rounded-full text-sm tracking-wide font-semibold transition-all duration-200 active:scale-90 ${mode === 'balloon'
+            ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white shadow-lg shadow-pink-500/30'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/40 dark:hover:bg-white/5'
             }`}
         >
           Balloon
