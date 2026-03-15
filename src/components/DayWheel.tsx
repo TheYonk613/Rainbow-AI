@@ -610,6 +610,7 @@ export default function DayWheel({
           resize?.hasMoved && h.eventId === resize.eventId && h.edge === resize.edge
         const isHovered =
           !isInteracting && hoveredEdge?.eventId === h.eventId && hoveredEdge?.edge === h.edge
+        const isSelected = h.eventId === selectedEventId
         const event = events.find((e) => e.id === h.eventId)
         const color = event?.color ?? 'rgba(0,0,0,0.3)'
 
@@ -622,7 +623,7 @@ export default function DayWheel({
             edge={h.edge}
             isActive={!!isActiveHandle}
             isHovered={isHovered}
-            isSelected={h.eventId === selectedEventId}
+            isSelected={isSelected}
             color={color}
           />
         )
@@ -821,3 +822,4 @@ function EdgeGrip({
     </g>
   )
 }
+

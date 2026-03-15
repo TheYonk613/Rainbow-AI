@@ -272,6 +272,7 @@ export default function App() {
                 events={events.filter((e) => e.date === selectedDate)}
                 currentTime={selectedDate === todayDate ? currentTime : -1}
                 timeFormat={settings.timeFormat}
+                selectedEventId={actionTarget?.event.id}
                 onGapClick={handleGapClick}
                 onEventClick={handleEventClick}
                 onEventTimeChange={handleEventTimeChange}
