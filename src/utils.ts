@@ -14,6 +14,28 @@ import type { CalendarEvent, Position, TimeGap, TimeFormat } from './types'
 // ─── Dynamic rotation offset ─────────────────────────────────────
 
 /**
+ * Returns YYYY-MM-DD in the specified timezone
+ */
+export function getZonedIsoDate(timeZone: string, offsetDays: number = 0): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  
+  if (timeZone === 'system') return d.toISOString().slice(0, 10)
+
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    return formatter.format(d)
+  } catch {
+    return d.toISOString().slice(0, 10) // fallback
+  }
+}
+
+/**
  * Static clock logic - 00:00 is fixed at the top.
  * We return 0 so the dial doesn't rotate with active hours.
  */
@@ -228,9 +250,9 @@ export function defaultEventTimes(
     startH = Math.max(gap.start, endH - DEFAULT_EVENT_DURATION)
   }
 
-  startH = Math.round(startH * 4) / 4
-  endH = Math.round(endH * 4) / 4
-  if (endH - startH < 0.25) endH = startH + 0.25
+  startH = snapToFiveMinutes(startH)
+  endH = snapToFiveMinutes(endH)
+  if (endH - startH < MIN_EVENT_DURATION) endH = startH + MIN_EVENT_DURATION
 
   return { startH, endH }
 }
@@ -279,8 +301,8 @@ export function getActiveEvent(events: CalendarEvent[], currentTime: number): Ca
 
 // ─── Drag helpers ────────────────────────────────────────────────
 
-export function snapToQuarter(hour: number): number {
-  return Math.round(hour * 4) / 4
+export function snapToFiveMinutes(hour: number): number {
+  return Math.round(hour * 12) / 12
 }
 
 export function getDragBounds(
@@ -290,7 +312,7 @@ export function getDragBounds(
   const event = events.find((e) => e.id === eventId)!
   const duration = event.endH - event.startH
   const others = events
-    .filter((e) => e.id !== eventId && !e.isPopping)
+    .filter((e) => e.id !== eventId && !e.isPopping && e.isImpassable)
     .sort((a, b) => a.startH - b.startH)
 
   let minStart = START_OF_DAY
@@ -316,7 +338,7 @@ export function getResizeBounds(
 ): { fixedHour: number; minHour: number; maxHour: number } {
   const event = events.find((e) => e.id === eventId)!
   const others = events
-    .filter((e) => e.id !== eventId && !e.isPopping)
+    .filter((e) => e.id !== eventId && !e.isPopping && e.isImpassable)
     .sort((a, b) => a.startH - b.startH)
 
   if (edge === 'start') {

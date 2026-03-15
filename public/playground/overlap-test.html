@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Overlap Test (Split Lane)</title>
+<style>
+  body { background: #1a1a1a; color: white; margin: 0; padding: 40px; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+  svg { background: #222; border-radius: 50%; width: 500px; height: 500px; }
+  .instructions { margin-top: 20px; text-align: center; color: #aaa; }
+</style>
+</head>
+<body>
+  <h2>Split Lane Idea (Hover test)</h2>
+  <svg viewBox="0 0 500 500">
+    <circle cx="250" cy="250" r="160" fill="none" stroke="#333" stroke-width="80" />
+    
+    <!-- Base block (Work) -->
+    <!-- M 170 111 A 160 160 0 0 1 388 170 = approx 11am to 2pm on ring -->
+    <path d="
+      M 183 103
+      A 160 160 0 0 1 388 170
+      A 12 12 0 0 1 379 187
+      L 352 171
+      A 12 12 0 0 1 346 155
+      A 120 120 0 0 0 193 105
+      A 12 12 0 0 1 180 95
+      L 173 106
+      A 12 12 0 0 1 183 103 Z" 
+      fill="none" stroke="cyan" stroke-width="2" class="base-block"/>
+      
+    <!-- Re-creating the path to be solid block so we can see it better -->
+    <path id="work" fill="rgba(0,255,255,0.7)" stroke="#000" stroke-width="2" d="M 136.86 136.86 A 160 160 0 0 1 363.13 136.86 L 334.85 165.14 A 120 120 0 0 0 165.14 165.14 Z" />
+    
+    <text x="250" y="125" fill="#fff" font-size="20" font-weight="bold" text-anchor="middle" dominant-baseline="central">WORK</text>
+    
+    <!-- Overlapping block (Inner Lane) -->
+    <path id="appt" fill="rgba(255,50,255,0.9)" stroke="#1a1a1a" stroke-width="4" d="M 193.43 145.43 A 140 140 0 0 1 250 110 L 250 150 A 100 100 0 0 0 216.56 168.56 Z" />
+    
+    <!-- Overlapping block (Outer Lane) -->
+    <path id="appt" fill="rgba(255,255,50,0.9)" stroke="#1a1a1a" stroke-width="4" d="M 250 90 A 180 180 0 0 1 334.85 110.14 L 306.56 138.43 A 140 140 0 0 0 250 130 Z" />
+
+  </svg>
+  <div class="instructions">
+    Left (Pink): Inner Lane Overlap <br/> Right (Yellow): Outer Lane Overlap<br/> Both are drawn over the Cyan "Work" block.
+  </div>
+</body>
+</html>
