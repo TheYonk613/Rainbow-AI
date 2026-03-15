@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import type { CalendarEvent, TimeFormat } from './types'
 import { SAMPLE_EVENTS, DEFAULT_ACTIVE_START, DEFAULT_ACTIVE_END } from './constants'
@@ -11,6 +11,8 @@ import EventCreator from './components/EventCreator'
 import EventEditor from './components/EventEditor'
 import Settings from './components/Settings'
 import TasksPage from './components/TasksPage'
+import { JourneyPage } from './components/JourneyPage'
+import { JourneyIcon } from './components/JourneyIcon'
 
 const STORAGE_KEY = 'ra1nbow-settings'
 const POP_DURATION_MS = 550
@@ -50,7 +52,8 @@ function loadSettings(): PersistedSettings {
 }
 
 export default function App() {
-  const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon'>('orbit')
+  const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon' | 'journey'>('orbit')
+  const prevModeRef = useRef<'orbit' | 'rainbow' | 'balloon'>('orbit')
   const [events, setEvents] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
   const [showSettings, setShowSettings] = useState(false)
   const currentTime = useCurrentTime()
@@ -203,6 +206,17 @@ export default function App() {
     }
   }, [mode])
 
+  const handleOpenJourney = useCallback(() => {
+    if (mode !== 'journey') {
+      prevModeRef.current = mode as 'orbit' | 'rainbow' | 'balloon'
+    }
+    setMode('journey')
+  }, [mode])
+
+  const handleCloseJourney = useCallback(() => {
+    setMode(prevModeRef.current ?? 'orbit')
+  }, [])
+
   return (
     <div className={`min-h-screen transition-colors duration-500 flex flex-col ${settings.darkMode ? 'dark bg-[#121212]' : 'bg-[#f7f6f3]'} bg-noise`}>
       <header className="flex items-center justify-center pt-8 pb-2 relative z-20">
@@ -225,6 +239,13 @@ export default function App() {
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E07B6C] via-[#8B8FD8] to-[#8BA89A]" />
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight transition-colors">Ra1nbow</h1>
+        </div>
+        {/* Journey icon — top right, glows at 7PM */}
+        <div className="absolute right-6 top-8 z-30">
+          <JourneyIcon
+            onClick={handleOpenJourney}
+            isActive={mode === 'journey'}
+          />
         </div>
       </header>
 
@@ -272,6 +293,15 @@ export default function App() {
         >
           <TasksPage />
         </div>
+
+        {/* Journey View */}
+        <AnimatePresence>
+          {mode === 'journey' && (
+            <div className="absolute inset-0 z-20">
+              <JourneyPage onBack={handleCloseJourney} />
+            </div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Bottom left nav pills */}
