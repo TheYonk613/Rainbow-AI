@@ -34,6 +34,7 @@ interface DayWheelProps {
   events: CalendarEvent[]
   currentTime: number
   timeFormat: TimeFormat
+  selectedEventId?: string
   onGapClick: (hour: number, clientX: number, clientY: number) => void
   onEventClick: (event: CalendarEvent, clientX: number, clientY: number) => void
   onEventTimeChange: (id: string, startH: number, endH: number) => void
@@ -81,6 +82,7 @@ export default function DayWheel({
   events,
   currentTime,
   timeFormat,
+  selectedEventId,
   onGapClick,
   onEventClick,
   onEventTimeChange,
@@ -608,6 +610,7 @@ export default function DayWheel({
           resize?.hasMoved && h.eventId === resize.eventId && h.edge === resize.edge
         const isHovered =
           !isInteracting && hoveredEdge?.eventId === h.eventId && hoveredEdge?.edge === h.edge
+        const isSelected = h.eventId === selectedEventId
         const event = events.find((e) => e.id === h.eventId)
         const color = event?.color ?? 'rgba(0,0,0,0.3)'
 
@@ -617,8 +620,10 @@ export default function DayWheel({
             cx={h.pos.x}
             cy={h.pos.y}
             angleDeg={h.angle}
+            edge={h.edge}
             isActive={!!isActiveHandle}
             isHovered={isHovered}
+            isSelected={isSelected}
             color={color}
           />
         )
@@ -744,39 +749,64 @@ function CurrentTimeIndicator({ currentTime, angleOffset }: { currentTime: numbe
 // Three short radial lines arranged along the arc tangent — like a ≡ grip
 
 function EdgeGrip({
-  cx, cy, angleDeg, isActive, isHovered, color,
+  cx, cy, angleDeg, edge, isActive, isHovered, isSelected, color,
 }: {
   cx: number
   cy: number
   angleDeg: number
+  edge: 'start' | 'end'
   isActive: boolean
   isHovered: boolean
+  isSelected: boolean
   color: string
 }) {
   const rad = degToRad(angleDeg)
-  // Tangent direction (along the ring arc)
   const tx = -Math.sin(rad)
   const ty = Math.cos(rad)
-  // Radial direction (across the ring)
   const rx = Math.cos(rad)
   const ry = Math.sin(rad)
 
-  const SPACING = 3.5   // gap between lines along the tangent
-  const HALF_LEN = 7    // half-length of each line across the ring
+  const SPACING = 4.2   // gap between lines along the tangent
+  const HALF_LEN = 12   // length of each line across the ring (total 24px)
 
   const colorToken = color.startsWith('g') ? `var(--${color}-mid)` : color
   const stroke = isActive
     ? colorToken
     : isHovered
-      ? 'rgba(255,255,255,0.9)'
-      : 'rgba(255,255,255,0.55)'
-  const strokeW = isActive ? 2.5 : isHovered ? 2 : 1.8
+      ? 'rgba(255,255,255,1)'
+      : 'rgba(255,255,255,0.75)'
+  const strokeW = isActive ? 2.8 : isHovered ? 2.4 : 2.2
+
+  // Only show handles if selected, hovered, or actively being used
+  const isVisible = isSelected || isHovered || isActive
+
+  // "that being the one included inside the bubble"
+  const dir = edge === 'start' ? 1 : -1
+  const offsets = [1.2] // Single line shifted INTO the bubble
 
   return (
-    <g className="pointer-events-none">
-      {[-1, 0, 1].map((i) => {
-        const ox = cx + i * SPACING * tx
-        const oy = cy + i * SPACING * ty
+    <g 
+      className="pointer-events-none" 
+      style={{ 
+        opacity: isVisible ? 1 : 0,
+        transition: 'opacity 0.25s ease'
+      }}
+    >
+      {/* Visual Glow behind the line */}
+      {(isHovered || isActive) && (
+        <circle
+          cx={cx}
+          cy={cy}
+          r={10}
+          fill={colorToken}
+          opacity={0.3}
+          style={{ transition: 'opacity 0.2s ease' }}
+        />
+      )}
+      
+      {offsets.map((off, i) => {
+        const ox = cx + dir * off * SPACING * tx
+        const oy = cy + dir * off * SPACING * ty
         return (
           <line
             key={i}
@@ -787,7 +817,10 @@ function EdgeGrip({
             stroke={stroke}
             strokeWidth={strokeW}
             strokeLinecap="round"
-            style={{ transition: 'stroke 0.15s ease, stroke-width 0.15s ease' }}
+            style={{ 
+              transition: 'stroke 0.15s ease, stroke-width 0.15s ease',
+              filter: isHovered || isActive ? 'drop-shadow(0 0 4px rgba(0,0,0,0.2))' : 'none'
+            }}
           />
         )
       })}

@@ -87,10 +87,11 @@ export default function EventActionMenu({
     if (left < pad) left = pad
     if (left + menuW > vw - pad) left = vw - menuW - pad
     if (top < pad) top = pad
+    // We'll let the menu grow downwards, but check for bottom overflow
     if (top + menuH > vh - pad) top = vh - menuH - pad
 
     const duration = event.endH - event.startH
-    const durationLabel = duration >= 1 ? `${duration}h` : `${Math.round(duration * 60)}m`
+    const durationLabel = duration >= 1 ? `${Number(duration.toFixed(2))}h` : `${Math.round(duration * 60)}m`
 
     const today = new Date()
     const dayName = today.toLocaleDateString('en-US', { weekday: 'long' })
@@ -117,7 +118,7 @@ export default function EventActionMenu({
     return (
         <div
             ref={menuRef}
-            style={{ left, top, position: 'fixed', zIndex: 100, width: menuW, height: menuH }}
+            style={{ left, top, position: 'fixed', zIndex: 100, width: menuW, minHeight: 200 }}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             className="apple-calendar-menu"
