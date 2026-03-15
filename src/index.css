@@ -5,6 +5,38 @@
 
 :root {
   --ring-pop-duration: 0.6s;
+
+  /* g1: Dusk Neon */
+  --g1-dusk-start: #b0bec5; --g1-dusk-mid: #c026f5; --g1-dusk-end: #8000ff;
+  --g1-dusk-glow1: rgba(192, 38, 245, 0.2); --g1-dusk-glow2: rgba(128, 0, 255, 0.1);
+
+  /* g2: Inferno */
+  --g2-inferno-start: #ff0033; --g2-inferno-mid: #ff5500; --g2-inferno-end: #ffe500;
+  --g2-inferno-glow1: rgba(255, 0, 51, 0.2); --g2-inferno-glow2: rgba(255, 229, 0, 0.1);
+
+  /* g3: Electric Sea */
+  --g3-electric-start: #00ffe7; --g3-electric-mid: #00aaff; --g3-electric-end: #0055ff;
+  --g3-electric-glow1: rgba(0, 255, 231, 0.2); --g3-electric-glow2: rgba(0, 85, 255, 0.1);
+
+  /* g4: Laser Pink */
+  --g4-laser-start: #ff2dff; --g4-laser-mid: #ff0099; --g4-laser-end: #ff1744;
+  --g4-laser-glow1: rgba(255, 45, 255, 0.2); --g4-laser-glow2: rgba(255, 23, 68, 0.1);
+
+  /* g5: Toxic Mint */
+  --g5-toxic-start: #39ff14; --g5-toxic-mid: #00ffcc; --g5-toxic-end: #00d4c8;
+  --g5-toxic-glow1: rgba(57, 255, 20, 0.2); --g5-toxic-glow2: rgba(0, 212, 200, 0.1);
+
+  /* g6: Ultraviolet */
+  --g6-uv-start: #cc00ff; --g6-uv-mid: #7700ff; --g6-uv-end: #0099ff;
+  --g6-uv-glow1: rgba(204, 0, 255, 0.2); --g6-uv-glow2: rgba(0, 153, 255, 0.1);
+
+  /* g7: Solar Flare */
+  --g7-solar-start: #ffe93d; --g7-solar-mid: #aaff00; --g7-solar-end: #39ff14;
+  --g7-solar-glow1: rgba(255, 233, 61, 0.2); --g7-solar-glow2: rgba(57, 255, 20, 0.1);
+
+  /* g8: Chrome Rose */
+  --g8-chrome-start: #cfd8dc; --g8-chrome-mid: #ff69b4; --g8-chrome-end: #ff2dff;
+  --g8-chrome-glow1: rgba(255, 105, 180, 0.2); --g8-chrome-glow2: rgba(255, 45, 255, 0.1);
 }
 
 body {
@@ -435,18 +467,23 @@ body {
 }
 
 .apple-menu-notes-display {
+  box-sizing: border-box;
+  width: 100%;
   font-size: 13px;
   color: #444;
-  min-height: 60px;
+  min-height: 80px;
   padding: 8px 10px;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.03);
+  border: 1px solid transparent; /* matches input border height */
   cursor: text;
   line-height: 1.4;
   white-space: pre-wrap;
 }
 
 .apple-menu-notes-input {
+  box-sizing: border-box;
+  width: 100%;
   font-size: 13px;
   color: #000;
   min-height: 80px;
@@ -524,6 +561,17 @@ body {
 }
 
 /* ── Dark Mode ── */
+
+.dark {
+  --g1-dusk-glow1: rgba(192, 38, 245, 0.55); --g1-dusk-glow2: rgba(128, 0, 255, 0.3);
+  --g2-inferno-glow1: rgba(255, 0, 51, 0.55); --g2-inferno-glow2: rgba(255, 229, 0, 0.3);
+  --g3-electric-glow1: rgba(0, 255, 231, 0.5); --g3-electric-glow2: rgba(0, 85, 255, 0.3);
+  --g4-laser-glow1: rgba(255, 45, 255, 0.55); --g4-laser-glow2: rgba(255, 23, 68, 0.3);
+  --g5-toxic-glow1: rgba(57, 255, 20, 0.5); --g5-toxic-glow2: rgba(0, 212, 200, 0.3);
+  --g6-uv-glow1: rgba(204, 0, 255, 0.55); --g6-uv-glow2: rgba(0, 153, 255, 0.3);
+  --g7-solar-glow1: rgba(255, 233, 61, 0.5); --g7-solar-glow2: rgba(57, 255, 20, 0.3);
+  --g8-chrome-glow1: rgba(255, 105, 180, 0.5); --g8-chrome-glow2: rgba(255, 45, 255, 0.35);
+}
 
 .dark .apple-calendar-menu {
   background: rgba(30, 30, 30, 0.85);
@@ -968,4 +1016,240 @@ body,
       0 0 0 2px rgba(251, 146, 60, 0.08),
       0 0 20px rgba(251, 146, 60, 0.12);
   }
+}
+
+/* ─── DateWheel (iOS-style horizontal picker) ─── */
+
+.date-wheel-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* The scroll container — uses CSS variables for high-frequency updates */
+.date-wheel-scroll {
+  display: flex;
+  flex-direction: row;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-block: 10px;
+  background: transparent;
+  cursor: grab;
+  position: relative;
+  min-height: 100px;
+  /* --scroll-x is updated by JS on every scroll frame */
+  --scroll-x: 0; 
+}
+
+.date-wheel-scroll:active {
+  cursor: grabbing;
+}
+
+.date-wheel-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Each date column */
+.date-wheel-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 52px; /* ITEM_W */
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  
+  /* PURE CSS DRUM WHEEL MATH 
+     --i is the index of the cell (set in inline style)
+     dist = absolute units from center
+  */
+  /* Dist-x is a number, we multiply by 1px to use it in transforms if needed, 
+     but for internal math we keep it as a pure scalar */
+  --center-x: calc(var(--i) * 52);
+  --dist-x: calc(var(--scroll-x) - var(--center-x));
+  
+  /* Gentler falloff for wider visibility (roughly 4-5 dates in each direction) */
+  --abs-dist-norm: calc((var(--dist-x) * var(--dist-x)) / 30000); 
+  
+  /* glow is 1 at center, and hits 0 when dist-x is ~50px away */
+  --glow: clamp(0, 1 - (calc((var(--dist-x) * var(--dist-x)) / 2500) * 1.5), 1);
+  
+  /* Visual transformations — gentler curves to show more items */
+  opacity: calc(1.1 - var(--abs-dist-norm));
+  transform: scale(calc(1 - (var(--abs-dist-norm) * 0.25)));
+  filter: blur(calc(var(--abs-dist-norm) * 0.8px));
+}
+
+/* Month label — appears once per month change */
+.date-wheel-month {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(0, 0, 0, 0.22);
+  height: 12px;
+  line-height: 12px;
+  margin-bottom: 1px;
+  transition: color 0.2s;
+}
+
+.dark .date-wheel-month {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.date-wheel-month.invisible {
+  visibility: hidden;
+}
+
+/* Day cell */
+.date-wheel-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 0 8px;
+  width: 44px;
+  border-radius: 14px;
+  background: transparent;
+  font-family: 'Outfit', system-ui, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+}
+
+/* The Live Glow Overlay */
+.date-wheel-day::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #e58a7d 0%, #a3a6e6 50%, #9ebbb0 100%);
+  /* This opacity is live-updated by the --glow variable calculated purely in CSS */
+  opacity: var(--glow);
+  z-index: -1;
+  box-shadow: 
+    0 8px 24px rgba(163, 166, 230, calc(var(--glow) * 0.4)),
+    0 2px 8px rgba(0, 0, 0, calc(var(--glow) * 0.1));
+}
+
+/* White text layer handled by color-mix now for perfect alignment */
+.date-wheel-day::after {
+  display: none;
+}
+
+/* Text */
+.date-wheel-dow {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  /* Smoothly mix to white as it centers */
+  color: color-mix(in srgb, rgba(0, 0, 0, 0.35), white calc(var(--glow) * 100%));
+}
+.dark .date-wheel-dow { 
+  color: color-mix(in srgb, rgba(255, 255, 255, 0.35), white calc(var(--glow) * 100%)); 
+}
+
+.date-wheel-num {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  /* Smoothly mix to white as it centers */
+  color: color-mix(in srgb, rgba(0, 0, 0, 0.75), white calc(var(--glow) * 100%));
+}
+.dark .date-wheel-num { 
+  color: color-mix(in srgb, rgba(255, 255, 255, 0.78), white calc(var(--glow) * 100%)); 
+}
+
+/* Activity dot */
+.date-wheel-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+.date-wheel-dot--active {
+  background: linear-gradient(135deg, #e58a7d, #a3a6e6);
+}
+
+/* Fallback/State-based centering (kept for logic consistency but visual is handled by CSS glow) */
+.date-wheel-day--centered {
+  z-index: 10;
+}
+
+/* Ensure original text fades out when glow is on */
+.date-wheel-day--centered .date-wheel-dow,
+.date-wheel-day--centered .date-wheel-num {
+  /* opacity: calc(1 - var(--glow)); */ /* This would be cool but we can just use the glow overlay */
+}
+
+/* Today: red number when not centered */
+.date-wheel-day--today .date-wheel-num {
+  color: #ff3b30;
+  font-weight: 700;
+}
+.dark .date-wheel-day--today .date-wheel-num { color: #ff453a; }
+
+/* Weekends: slightly dimmed */
+.date-wheel-day--weekend .date-wheel-dow,
+.date-wheel-day--weekend .date-wheel-num {
+  opacity: 0.55;
+}
+
+/* (Fades removed for cleaner look) */
+
+/* ─── Date label above the wheel ─── */
+
+@keyframes date-label-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.date-label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  animation: date-label-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.date-label-today-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ff3b30;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(255, 59, 48, 0.08);
+}
+
+.dark .date-label-today-badge {
+  color: #ff453a;
+  background: rgba(255, 69, 58, 0.12);
+}
+
+
+
+
+.date-label-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.2px;
+}
+
+.dark .date-label-text {
+  color: rgba(255, 255, 255, 0.4);
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CalendarEvent } from '../types'
 import { EVENT_COLORS } from '../constants'
-import { snapToQuarter } from '../utils'
+import { snapToFiveMinutes } from '../utils'
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
@@ -14,6 +14,7 @@ interface EventActionMenuProps {
     onNotesChange: (id: string, notes: string) => void
     onTimeChange: (id: string, startH: number, endH: number) => void
     onEdit: (event: CalendarEvent) => void
+    onToggleImpassable: (id: string) => void
     onDelete: (event: CalendarEvent) => void
     onClose: () => void
 }
@@ -27,6 +28,7 @@ export default function EventActionMenu({
     onNotesChange,
     onTimeChange,
     onEdit,
+    onToggleImpassable,
     onDelete,
     onClose,
 }: EventActionMenuProps) {
@@ -97,12 +99,12 @@ export default function EventActionMenu({
     const handleTimeInput = (type: 'start' | 'end', val: string) => {
         const [h, m] = val.split(':').map(Number)
         let newTime = h + m / 60
-        newTime = snapToQuarter(newTime)
+        newTime = snapToFiveMinutes(newTime)
 
         if (type === 'start') {
-            onTimeChange(event.id, Math.min(newTime, event.endH - 0.25), event.endH)
+            onTimeChange(event.id, Math.min(newTime, event.endH - (1 / 12)), event.endH)
         } else {
-            onTimeChange(event.id, event.startH, Math.max(newTime, event.startH + 0.25))
+            onTimeChange(event.id, event.startH, Math.max(newTime, event.startH + (1 / 12)))
         }
     }
 
@@ -135,7 +137,7 @@ export default function EventActionMenu({
                 <div className="apple-menu-title-row">
                     <div
                         className="apple-menu-indicator"
-                        style={{ backgroundColor: event.color }}
+                        style={{ backgroundColor: `var(--${event.color}-mid)` }}
                     />
                     {isEditingTitle ? (
                         <input
@@ -165,7 +167,7 @@ export default function EventActionMenu({
                         <label>Start</label>
                         <input
                             type="time"
-                            step="900"
+                            step="300"
                             value={toTimeInputValue(event.startH)}
                             onChange={(e) => handleTimeInput('start', e.target.value)}
                         />
@@ -174,15 +176,32 @@ export default function EventActionMenu({
                         <label>End</label>
                         <input
                             type="time"
-                            step="900"
+                            step="300"
                             value={toTimeInputValue(event.endH)}
                             onChange={(e) => handleTimeInput('end', e.target.value)}
                         />
                     </div>
                 </div>
 
-                <div className="apple-menu-duration-tag">
-                    {durationLabel}
+                <div className="apple-menu-duration-tag" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '16px' }}>
+                    <span>{durationLabel}</span>
+                    <div className="flex items-center gap-2" style={{ marginTop: '-4px' }}>
+                        <label
+                            className="apple-notes-label"
+                            style={{ margin: 0, cursor: 'pointer', opacity: event.isImpassable ? 1 : 0.6 }}
+                            onClick={() => onToggleImpassable(event.id)}
+                        >
+                            Impassable
+                        </label>
+                        <div
+                            className={`relative w-8 h-4 rounded-full transition-colors duration-200 cursor-pointer ${event.isImpassable ? 'bg-gray-800 dark:bg-white/20' : 'bg-gray-200 dark:bg-white/10'}`}
+                            onClick={() => onToggleImpassable(event.id)}
+                        >
+                            <div
+                                className={`absolute top-[2px] left-[2px] w-3 h-3 rounded-full bg-white shadow transition-transform duration-200 ${event.isImpassable ? 'translate-x-4' : 'translate-x-0'}`}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Editable Notes Section */}
@@ -218,7 +237,7 @@ export default function EventActionMenu({
                             key={color}
                             onClick={() => onColorChange(event.id, color)}
                             className={`apple-color-dot ${color === event.color ? 'is-active' : ''}`}
-                            style={{ backgroundColor: color }}
+                            style={{ backgroundColor: `var(--${color}-mid)` }}
                         />
                     ))}
                 </div>

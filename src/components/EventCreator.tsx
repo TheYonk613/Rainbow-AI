@@ -141,7 +141,7 @@ export default function EventCreator({
                     ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-offset-[#1e1e1e] dark:ring-white/50 scale-110'
                     : 'hover:scale-110 opacity-60 hover:opacity-100'
                   }`}
-                style={{ backgroundColor: c }}
+                style={{ backgroundColor: `var(--${c}-mid)` }}
               />
             ))}
           </div>
@@ -150,7 +150,7 @@ export default function EventCreator({
           <button
             onClick={handleSubmit}
             className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-            style={{ backgroundColor: color }}
+            style={{ backgroundColor: `var(--${color}-mid)` }}
           >
             Create Event
           </button>

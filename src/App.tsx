@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import type { CalendarEvent, TimeFormat } from './types'
-import { SAMPLE_EVENTS, DEFAULT_ACTIVE_START, DEFAULT_ACTIVE_END } from './constants'
+import { SAMPLE_EVENTS } from './constants'
 import { useCurrentTime } from './hooks/useCurrentTime'
-import { defaultEventTimes, findGapAtTime } from './utils'
+import { defaultEventTimes, findGapAtTime, getZonedIsoDate } from './utils'
 import DayWheel from './components/DayWheel'
+import DateStrip from './components/DateStrip'
 import DeleteConfirm from './components/DeleteConfirm'
 import EventActionMenu from './components/EventActionMenu'
 import EventCreator from './components/EventCreator'
@@ -18,11 +19,9 @@ const STORAGE_KEY = 'ra1nbow-settings'
 const POP_DURATION_MS = 550
 
 interface PersistedSettings {
-  activeStart: number
-  activeEnd: number
   timeFormat: TimeFormat
-  allowOverlap: boolean
   darkMode: boolean
+  timeZone: string
 }
 
 function loadSettings(): PersistedSettings {
@@ -31,11 +30,9 @@ function loadSettings(): PersistedSettings {
     if (raw) {
       const parsed = JSON.parse(raw)
       return {
-        activeStart: parsed.activeStart ?? DEFAULT_ACTIVE_START,
-        activeEnd: parsed.activeEnd ?? DEFAULT_ACTIVE_END,
         timeFormat: parsed.timeFormat ?? '24h',
-        allowOverlap: parsed.allowOverlap ?? false,
         darkMode: parsed.darkMode ?? false,
+        timeZone: parsed.timeZone ?? 'system',
       }
     }
   } catch {
@@ -43,21 +40,26 @@ function loadSettings(): PersistedSettings {
   }
 
   return {
-    activeStart: DEFAULT_ACTIVE_START,
-    activeEnd: DEFAULT_ACTIVE_END,
     timeFormat: '24h',
-    allowOverlap: false,
     darkMode: false,
+    timeZone: 'system',
   }
 }
 
 export default function App() {
   const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon' | 'journey'>('orbit')
   const prevModeRef = useRef<'orbit' | 'rainbow' | 'balloon'>('orbit')
+  const [settings, setSettings] = useState<PersistedSettings>(loadSettings)
+  
+  // Today's ISO date, computed using the correct timezone
+  const todayDate = useMemo(() => getZonedIsoDate(settings.timeZone), [settings.timeZone])
+  
+  // We initialize selectedDate only once and don't automatically break view when changing timezones
+  const [selectedDate, setSelectedDate] = useState<string>(todayDate)
+
   const [events, setEvents] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
   const [showSettings, setShowSettings] = useState(false)
-  const currentTime = useCurrentTime()
-  const [settings, setSettings] = useState<PersistedSettings>(loadSettings)
+  const currentTime = useCurrentTime(settings.timeZone)
   const [creator, setCreator] = useState<{
     startH: number
     endH: number
@@ -77,20 +79,12 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
   }, [settings])
 
-  const handleActiveStartChange = useCallback((h: number) => {
-    setSettings((prev) => ({ ...prev, activeStart: h }))
-  }, [])
-
-  const handleActiveEndChange = useCallback((h: number) => {
-    setSettings((prev) => ({ ...prev, activeEnd: h }))
-  }, [])
-
   const handleTimeFormatChange = useCallback((f: TimeFormat) => {
     setSettings((prev) => ({ ...prev, timeFormat: f }))
   }, [])
 
-  const handleAllowOverlapChange = useCallback((v: boolean) => {
-    setSettings((prev) => ({ ...prev, allowOverlap: v }))
+  const handleTimeZoneChange = useCallback((tz: string) => {
+    setSettings((prev) => ({ ...prev, timeZone: tz }))
   }, [])
 
   const toggleDarkMode = useCallback(() => {
@@ -99,22 +93,25 @@ export default function App() {
 
   const handleGapClick = useCallback(
     (hour: number, clientX: number, clientY: number) => {
-      const gap = findGapAtTime(events, hour)
+      const dayEvents = events.filter((e) => e.date === selectedDate)
+      const gap = findGapAtTime(dayEvents, hour)
       if (!gap) return
       const { startH, endH } = defaultEventTimes(hour, gap)
       setCreator({ startH, endH, anchorX: clientX, anchorY: clientY })
     },
-    [events]
+    [events, selectedDate]
   )
 
   const handleCreateEvent = useCallback((event: CalendarEvent) => {
-    setEvents((prev) => [...prev, event])
+    // Stamp the event with the currently selected date
+    const stamped = { ...event, date: selectedDate }
+    setEvents((prev) => [...prev, stamped])
     setCreator(null)
 
     setTimeout(() => {
-      setEvents((prev) => prev.map((e) => (e.id === event.id ? { ...e, isNew: false } : e)))
+      setEvents((prev) => prev.map((e) => (e.id === stamped.id ? { ...e, isNew: false } : e)))
     }, 700)
-  }, [])
+  }, [selectedDate])
 
   const handleCancelCreate = useCallback(() => setCreator(null), [])
 
@@ -167,6 +164,13 @@ export default function App() {
   const handleEditEvent = useCallback((event: CalendarEvent) => {
     setEditTarget(event)
     setActionTarget(null)
+  }, [])
+
+  const handleToggleImpassable = useCallback((id: string) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, isImpassable: !e.isImpassable } : e)))
+    setActionTarget((prev) =>
+      prev && prev.event.id === id ? { ...prev, event: { ...prev.event, isImpassable: !prev.event.isImpassable } } : prev
+    )
   }, [])
 
   const handleTimeChange = useCallback((id: string, startH: number, endH: number) => {
@@ -266,24 +270,49 @@ export default function App() {
           className={`absolute inset-0 transition-opacity duration-[400ms] flex flex-col ${mode === 'orbit' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'
             }`}
         >
-          <main className="flex-1 flex items-center justify-center px-4">
-            <div className="w-full max-w-[560px]">
+          <main className="flex-1 flex flex-col items-center justify-center px-4 overflow-hidden relative">
+            {/* Date label — moved even higher to clear the top of the ring */}
+            <div className="absolute top-1 left-0 right-0 flex items-center justify-center z-10">
+              <div className="date-label" key={selectedDate}>
+                {selectedDate === todayDate && (
+                  <span className="date-label-today-badge">Today</span>
+                )}
+                <span className="date-label-text">
+                  {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </span>
+              </div>
+            </div>
+
+            {/* Top Area: DayWheel Ring */}
+            <div className="w-full max-w-[560px] flex flex-col items-center mb-2">
               <DayWheel
-                events={events}
-                currentTime={currentTime}
-                activeStart={settings.activeStart}
-                activeEnd={settings.activeEnd}
+                events={events.filter((e) => e.date === selectedDate)}
+                currentTime={selectedDate === todayDate ? currentTime : -1}
                 timeFormat={settings.timeFormat}
-                allowOverlap={settings.allowOverlap}
                 onGapClick={handleGapClick}
                 onEventClick={handleEventClick}
                 onEventTimeChange={handleEventTimeChange}
               />
             </div>
+
+            {/* Middle Area: Date Wheel Selection */}
+            <div className="w-full max-w-[560px] mb-12">
+              <DateStrip
+                selectedDate={selectedDate}
+                todayDate={todayDate}
+                events={events}
+                onSelectDate={setSelectedDate}
+              />
+            </div>
+
+            <footer className="w-full text-center pb-2 text-xs text-gray-300 font-mono opacity-50">
+              click · drag · resize
+            </footer>
           </main>
-          <footer className="text-center pb-24 text-xs text-gray-300 font-mono">
-            click to create · drag to move · pull edges to resize
-          </footer>
         </div>
 
         {/* Balloon View */}
@@ -304,11 +333,11 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {/* Bottom left nav pills */}
-      <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2">
+      {/* Bottom Navigation Dock */}
+      <div className="fixed bottom-6 left-6 z-40 flex items-center gap-2 p-1.5 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-2xl shadow-2xl shadow-black/15 border border-white/20 dark:border-white/10 transition-all duration-500">
         <a
           href="/mockup.html"
-          className="h-10 px-4 rounded-full bg-white/80 dark:bg-white/10 backdrop-blur shadow-lg shadow-black/5 dark:shadow-white/5 border border-gray-100 dark:border-white/10 flex items-center gap-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:scale-105 transition-all active:scale-95 no-underline text-xs font-semibold tracking-wide"
+          className="h-10 px-4 rounded-full bg-white/40 dark:bg-white/5 border border-transparent hover:border-gray-100 dark:hover:border-white/10 flex items-center gap-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:scale-105 transition-all active:scale-95 no-underline text-xs font-semibold tracking-wide"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="3" width="20" height="18" rx="3" />
@@ -316,15 +345,14 @@ export default function App() {
           </svg>
           Card Mode
         </a>
-      </div>
 
-      {/* Global Persistent Dock (Three Worlds Switcher) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 p-1.5 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-2xl shadow-2xl shadow-black/15 border border-white/20 dark:border-white/10 transition-all duration-500">
+        <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-1" />
+
         <button
           onClick={() => setMode('orbit')}
           className={`h-10 px-6 rounded-full text-sm tracking-wide font-semibold transition-all duration-200 active:scale-90 ${mode === 'orbit'
             ? 'bg-white dark:bg-white shadow-lg text-gray-900'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/40 dark:hover:bg-white/5'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100'
             }`}
         >
           Orbit
@@ -333,7 +361,7 @@ export default function App() {
           onClick={() => setMode('rainbow')}
           className={`h-10 px-6 rounded-full text-sm tracking-wide font-semibold transition-all duration-200 active:scale-90 ${mode === 'rainbow'
             ? 'bg-gradient-to-r from-[#e58a7d] via-[#a3a6e6] to-[#9ebbb0] text-white shadow-lg shadow-purple-500/30'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/40 dark:hover:bg-white/5'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100'
             }`}
         >
           Rainbow
@@ -342,7 +370,7 @@ export default function App() {
           onClick={() => setMode('balloon')}
           className={`h-10 px-6 rounded-full text-sm tracking-wide font-semibold transition-all duration-200 active:scale-90 ${mode === 'balloon'
             ? 'bg-gradient-to-r from-[#B5B8F0] to-[#E8A0BF] text-white shadow-lg shadow-pink-500/30'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/40 dark:hover:bg-white/5'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100'
             }`}
         >
           Balloon
@@ -391,6 +419,7 @@ export default function App() {
           onNotesChange={handleUpdateNotes}
           onTimeChange={handleTimeChange}
           onEdit={handleEditEvent}
+          onToggleImpassable={handleToggleImpassable}
           onDelete={handleDeleteEvent}
           onClose={handleCloseActionMenu}
         />
@@ -416,14 +445,10 @@ export default function App() {
         {showSettings && (
           <Settings
             key="settings"
-            activeStart={settings.activeStart}
-            activeEnd={settings.activeEnd}
             timeFormat={settings.timeFormat}
-            allowOverlap={settings.allowOverlap}
-            onActiveStartChange={handleActiveStartChange}
-            onActiveEndChange={handleActiveEndChange}
+            timeZone={settings.timeZone}
             onTimeFormatChange={handleTimeFormatChange}
-            onAllowOverlapChange={handleAllowOverlapChange}
+            onTimeZoneChange={handleTimeZoneChange}
             onClose={() => setShowSettings(false)}
           />
         )}
