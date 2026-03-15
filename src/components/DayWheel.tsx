@@ -623,11 +623,7 @@ export default function DayWheel({
             edge={h.edge}
             isActive={!!isActiveHandle}
             isHovered={isHovered}
-<<<<<<< Updated upstream
             isSelected={isSelected}
-=======
-            isSelected={h.eventId === selectedEventId}
->>>>>>> Stashed changes
             color={color}
           />
         )
@@ -770,12 +766,7 @@ function EdgeGrip({
   const rx = Math.cos(rad)
   const ry = Math.sin(rad)
 
-<<<<<<< Updated upstream
-  const SPACING = 4.2   // gap between lines along the tangent
-  const HALF_LEN = 12   // length of each line across the ring (total 24px)
-=======
   const HALF_LEN = 11   // length across the ring
->>>>>>> Stashed changes
 
   const colorToken = color.startsWith('g') ? `var(--${color}-mid)` : color
   const stroke = isActive
@@ -788,18 +779,12 @@ function EdgeGrip({
   // Only show handles if selected, hovered, or actively being used
   const isVisible = isSelected || isHovered || isActive
 
-<<<<<<< Updated upstream
-  // "that being the one included inside the bubble"
-  const dir = edge === 'start' ? 1 : -1
-  const offsets = [1.2] // Single line shifted INTO the bubble
-=======
   // Shift INTO the bubble: if it's a start edge, we shift positive along tangent (clockwise)
   // if it's an end edge, we shift negative (counter-clockwise)
   const shiftAmount = 1.0 
   const dir = edge === 'start' ? 1 : -1
   const ox = cx + dir * shiftAmount * tx
   const oy = cy + dir * shiftAmount * ty
->>>>>>> Stashed changes
 
   return (
     <g 
@@ -811,46 +796,6 @@ function EdgeGrip({
     >
       {/* Visual Glow behind the line */}
       {(isHovered || isActive) && (
-<<<<<<< Updated upstream
-        <circle
-          cx={cx}
-          cy={cy}
-          r={10}
-          fill={colorToken}
-          opacity={0.3}
-          style={{ transition: 'opacity 0.2s ease' }}
-        />
-      )}
-      
-      {offsets.map((off, i) => {
-        const ox = cx + dir * off * SPACING * tx
-        const oy = cy + dir * off * SPACING * ty
-        return (
-          <line
-            key={i}
-            x1={ox - HALF_LEN * rx}
-            y1={oy - HALF_LEN * ry}
-            x2={ox + HALF_LEN * rx}
-            y2={oy + HALF_LEN * ry}
-            stroke={stroke}
-            strokeWidth={strokeW}
-            strokeLinecap="round"
-            style={{ 
-              transition: 'stroke 0.15s ease, stroke-width 0.15s ease',
-              filter: isHovered || isActive ? 'drop-shadow(0 0 4px rgba(0,0,0,0.2))' : 'none'
-            }}
-          />
-        )
-      })}
-      {/* Active glow */}
-      {isActive && (
-        <circle
-          cx={cx}
-          cy={cy}
-          r={12}
-          fill={color}
-          opacity={0.15}
-=======
         <line
           x1={ox - (HALF_LEN + 2) * rx}
           y1={oy - (HALF_LEN + 2) * ry}
@@ -861,7 +806,6 @@ function EdgeGrip({
           strokeLinecap="round"
           opacity={0.2}
           style={{ filter: 'blur(4px)' }}
->>>>>>> Stashed changes
         />
       )}
 
@@ -878,3 +822,4 @@ function EdgeGrip({
     </g>
   )
 }
+
