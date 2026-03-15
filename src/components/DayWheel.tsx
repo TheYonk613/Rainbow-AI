@@ -6,15 +6,13 @@ import {
   WHEEL_CENTER,
   RING_RADIUS,
   RING_THICKNESS,
-  SLEEP_THICKNESS,
   EDGE_HIT_RADIUS,
   TOTAL_HOURS,
-  MIN_EVENT_DURATION,
+  EVENT_COLORS,
 } from '../constants'
 import {
   hourToAngle,
   hourToPosition,
-  arcPath,
   bubblePath,
   arcLength,
   formatTime,
@@ -25,10 +23,9 @@ import {
   isOnRing,
   pointToHour,
   findGapAtTime,
-  snapToQuarter,
+  snapToFiveMinutes,
   getDragBounds,
   getResizeBounds,
-  computeAngleOffset,
 } from '../utils'
 
 const DRAG_THRESHOLD = 6
@@ -36,10 +33,7 @@ const DRAG_THRESHOLD = 6
 interface DayWheelProps {
   events: CalendarEvent[]
   currentTime: number
-  activeStart: number
-  activeEnd: number
   timeFormat: TimeFormat
-  allowOverlap: boolean
   onGapClick: (hour: number, clientX: number, clientY: number) => void
   onEventClick: (event: CalendarEvent, clientX: number, clientY: number) => void
   onEventTimeChange: (id: string, startH: number, endH: number) => void
@@ -86,10 +80,7 @@ function findNearestEdge(
 export default function DayWheel({
   events,
   currentTime,
-  activeStart,
-  activeEnd,
   timeFormat,
-  allowOverlap,
   onGapClick,
   onEventClick,
   onEventTimeChange,
@@ -106,10 +97,8 @@ export default function DayWheel({
 
   // ─── Dynamic rotation offset ──────────────────────────────────
 
-  const angleOffset = useMemo(
-    () => computeAngleOffset(activeStart, activeEnd),
-    [activeStart, activeEnd]
-  )
+  // Fixed offset — 00:00 always at top
+  const angleOffset = 0
 
   const sorted = useMemo(
     () => [...events].sort((a, b) => a.startH - b.startH),
@@ -118,22 +107,6 @@ export default function DayWheel({
 
   const isInteracting = (drag?.hasMoved || resize?.hasMoved) ?? false
 
-  // ─── Sleep / active arc geometry ──────────────────────────────
-
-  const { activeArc, sleepArc } = useMemo(() => {
-    const aStart = hourToAngle(activeStart, angleOffset)
-    let aEnd = hourToAngle(activeEnd === 0 ? 24 : activeEnd, angleOffset)
-    if (aEnd <= aStart) aEnd += 360
-
-    // Sleep fills the remainder
-    const sStart = aEnd
-    const sEnd = aStart + 360
-
-    return {
-      activeArc: arcPath(WHEEL_CENTER, WHEEL_CENTER, RING_RADIUS, aStart, aEnd),
-      sleepArc: arcPath(WHEEL_CENTER, WHEEL_CENTER, RING_RADIUS, sStart, sEnd),
-    }
-  }, [activeStart, activeEnd, angleOffset])
 
   // ─── Hour markers (every 3 hours = 8 markers) ────────────────
 
@@ -227,15 +200,7 @@ export default function DayWheel({
         ; (e.target as SVGElement).setPointerCapture(e.pointerId)
         pointerStartRef.current = pt
 
-        let bounds = getResizeBounds(nearEdge.eventId, nearEdge.edge, events)
-        if (allowOverlap) {
-          // Wide-open bounds but enforce minimum duration so it doesn't flip direction
-          bounds = {
-            fixedHour: bounds.fixedHour,
-            minHour: nearEdge.edge === 'start' ? 0 : bounds.fixedHour + MIN_EVENT_DURATION,
-            maxHour: nearEdge.edge === 'start' ? bounds.fixedHour - MIN_EVENT_DURATION : 24,
-          }
-        }
+        const bounds = getResizeBounds(nearEdge.eventId, nearEdge.edge, events)
         const ev = events.find((x) => x.id === nearEdge.eventId)!
 
         setResize({
@@ -265,11 +230,7 @@ export default function DayWheel({
         ; (e.target as SVGElement).setPointerCapture(e.pointerId)
       pointerStartRef.current = pt
 
-      let bounds = getDragBounds(clickedEvent.id, events)
-      if (allowOverlap) {
-        // Allow free drag across the full ring
-        bounds = { duration: bounds.duration, minStart: 0, maxStart: 24 - bounds.duration }
-      }
+      const bounds = getDragBounds(clickedEvent.id, events)
       const eventMid = (clickedEvent.startH + clickedEvent.endH) / 2
       const grabOffset = hour - eventMid
 
@@ -288,7 +249,7 @@ export default function DayWheel({
       setHoveredEdge(null)
       e.preventDefault()
     },
-    [events, angleOffset, allowOverlap, sorted]
+    [events, angleOffset, sorted]
   )
 
   const handlePointerMove = useCallback(
@@ -305,10 +266,16 @@ export default function DayWheel({
         }
 
         hasInteractedRef.current = true
-        const hour = pointToHour(pt, angleOffset)
+        const rawHour = pointToHour(pt, angleOffset)
+
+        const currentHour = resize.edge === 'start' ? resize.previewStartH : resize.previewEndH
+        let diff = rawHour - currentHour
+        if (diff > 12) diff -= 24
+        else if (diff < -12) diff += 24
+        const hour = currentHour + diff
 
         if (resize.edge === 'start') {
-          const newStart = snapToQuarter(
+          const newStart = snapToFiveMinutes(
             Math.max(resize.minHour, Math.min(resize.maxHour, hour))
           )
           setResize((prev) =>
@@ -317,7 +284,7 @@ export default function DayWheel({
               : null
           )
         } else {
-          const newEnd = snapToQuarter(
+          const newEnd = snapToFiveMinutes(
             Math.max(resize.minHour, Math.min(resize.maxHour, hour))
           )
           setResize((prev) =>
@@ -338,13 +305,20 @@ export default function DayWheel({
         }
 
         hasInteractedRef.current = true
-        const hour = pointToHour(pt, angleOffset)
+        const rawHour = pointToHour(pt, angleOffset)
+
+        const currentMouseHour = drag.previewStartH + drag.duration / 2 + drag.grabOffset
+        let diff = rawHour - currentMouseHour
+        if (diff > 12) diff -= 24
+        else if (diff < -12) diff += 24
+        const hour = currentMouseHour + diff
+
         const newMid = hour - drag.grabOffset
         let newStart = newMid - drag.duration / 2
 
         newStart = Math.max(drag.minStart, Math.min(drag.maxStart, newStart))
-        newStart = snapToQuarter(newStart)
-        const newEnd = snapToQuarter(newStart + drag.duration)
+        newStart = snapToFiveMinutes(newStart)
+        const newEnd = snapToFiveMinutes(newStart + drag.duration)
 
         setDrag((prev) =>
           prev
@@ -463,18 +437,27 @@ export default function DayWheel({
       onPointerUp={handlePointerUp}
       onMouseLeave={handleMouseLeave}
     >
-      {/* ─── Sleep arc (dimmer, thinner) ─── */}
-      <path
-        d={sleepArc}
-        fill="none"
-        strokeWidth={SLEEP_THICKNESS}
-        strokeLinecap="round"
-        className="sleep-arc transition-colors duration-500"
-      />
+      <defs>
+        {EVENT_COLORS.map((colorId) => (
+          <g key={colorId}>
+            <linearGradient id={`grad-${colorId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={`var(--${colorId}-start)`} />
+              <stop offset="50%" stopColor={`var(--${colorId}-mid)`} />
+              <stop offset="100%" stopColor={`var(--${colorId}-end)`} />
+            </linearGradient>
+            <filter id={`glow-${colorId}`} x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor={`var(--${colorId}-glow1)`} />
+              <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor={`var(--${colorId}-glow2)`} />
+            </filter>
+          </g>
+        ))}
+      </defs>
 
-      {/* ─── Active arc (full thickness) ─── */}
-      <path
-        d={activeArc}
+      {/* ─── Full ring track ─── */}
+      <circle
+        cx={WHEEL_CENTER}
+        cy={WHEEL_CENTER}
+        r={RING_RADIUS}
         fill="none"
         strokeWidth={RING_THICKNESS}
         strokeLinecap="round"
@@ -538,10 +521,11 @@ export default function DayWheel({
             {/* Bubble segment */}
             <path
               d={d}
-              fill={event.color}
+              fill={event.color.startsWith('g') ? `url(#grad-${event.color})` : event.color}
               stroke="none"
               opacity={0.88}
               className={segmentClass}
+              filter={event.color.startsWith('g') ? `url(#glow-${event.color})` : undefined}
               style={{
                 ...(isNew
                   ? ({
@@ -551,7 +535,7 @@ export default function DayWheel({
                   } as React.CSSProperties)
                   : {}),
                 ...(isActive
-                  ? ({ '--drag-color': event.color + '60' } as React.CSSProperties)
+                  ? ({ '--drag-color': event.color.startsWith('g') ? `var(--${event.color}-glow1)` : event.color + '60' } as React.CSSProperties)
                   : {}),
               }}
             />
@@ -780,8 +764,9 @@ function EdgeGrip({
   const SPACING = 3.5   // gap between lines along the tangent
   const HALF_LEN = 7    // half-length of each line across the ring
 
+  const colorToken = color.startsWith('g') ? `var(--${color}-mid)` : color
   const stroke = isActive
-    ? color
+    ? colorToken
     : isHovered
       ? 'rgba(255,255,255,0.9)'
       : 'rgba(255,255,255,0.55)'
