@@ -7,6 +7,7 @@ import {
   TOTAL_HOURS,
   WHEEL_CENTER,
   WHEEL_SIZE,
+  EVENT_COLORS,
 } from '../constants'
 import {
   arcPath,
@@ -91,6 +92,22 @@ export default function OrbitCalendar({
 
   return (
     <svg viewBox={`0 0 ${WHEEL_SIZE} ${WHEEL_SIZE}`} className="w-full max-w-[560px] aspect-square">
+      <defs>
+        {EVENT_COLORS.map((colorId) => (
+          <g key={colorId}>
+            <linearGradient id={`grad-${colorId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={`var(--${colorId}-start)`} />
+              <stop offset="50%" stopColor={`var(--${colorId}-mid)`} />
+              <stop offset="100%" stopColor={`var(--${colorId}-end)`} />
+            </linearGradient>
+            <filter id={`glow-${colorId}`} x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor={`var(--${colorId}-glow1)`} />
+              <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor={`var(--${colorId}-glow2)`} />
+            </filter>
+          </g>
+        ))}
+      </defs>
+
       {markers.map((marker) => (
         <text
           key={marker.h}

@@ -12,6 +12,7 @@ export interface Position {
 export interface CalendarEvent {
   id: string
   title: string
+  date: string         // ISO date string, e.g. '2026-03-15'
   startH: number       // hour as float, e.g. 9.5 = 9:30 AM
   endH: number         // hour as float, e.g. 11.0 = 11:00 AM
   color: string        // hex color
@@ -20,6 +21,7 @@ export interface CalendarEvent {
   notes?: string       // optional notes/description
   isNew?: boolean      // triggers spring-in animation
   isPopping?: boolean  // triggers bubble-pop destruction animation
+  isImpassable?: boolean // if true, acts as a solid anchor that other events cannot pass through
 }
 
 /** Describes a gap in the schedule where a new event can be placed */

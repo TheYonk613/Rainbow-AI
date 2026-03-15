@@ -36,12 +36,13 @@ function OrbitEventComponent({
       <path
         d={d}
         fill="none"
-        stroke={event.color}
+        stroke={event.color.startsWith('g') ? `url(#grad-${event.color})` : event.color}
         strokeWidth={isSelected ? RING_THICKNESS + 8 : RING_THICKNESS}
         strokeLinecap="round"
         opacity={isDimmed ? 0.68 : isSelected ? 1 : 0.86}
+        filter={isSelected && event.color.startsWith('g') ? `url(#glow-${event.color})` : undefined}
         style={{
-          filter: isSelected ? `drop-shadow(0 0 12px ${event.color}88)` : 'none',
+          filter: isSelected && !event.color.startsWith('g') ? `drop-shadow(0 0 12px ${event.color}88)` : 'none',
           transition: 'opacity 300ms ease, stroke-width 300ms ease, filter 300ms ease',
         }}
       />
