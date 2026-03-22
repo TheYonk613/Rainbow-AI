@@ -6,16 +6,20 @@ import { TIMEZONES } from '../constants'
 interface SettingsProps {
   timeFormat: TimeFormat
   timeZone: string
+  markerResolution: 'minimal' | 'standard' | 'chronograph' | 'technical'
   onTimeFormatChange: (f: TimeFormat) => void
   onTimeZoneChange: (tz: string) => void
+  onMarkerResolutionChange: (res: 'minimal' | 'standard' | 'chronograph' | 'technical') => void
   onClose: () => void
 }
 
 export default function Settings({
   timeFormat,
   timeZone,
+  markerResolution,
   onTimeFormatChange,
   onTimeZoneChange,
+  onMarkerResolutionChange,
   onClose,
 }: SettingsProps) {
   useEffect(() => {
@@ -105,8 +109,8 @@ export default function Settings({
                 <button
                   onClick={() => onTimeFormatChange('24h')}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium font-mono transition-all ${timeFormat === '24h'
-                    ? 'bg-gray-800 dark:bg-white/20 text-white'
-                    : 'bg-gray-50 dark:bg-white/5 text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'
+                    ? 'bg-slate-900 dark:bg-white/20 text-white shadow-md'
+                    : 'bg-gray-200 dark:bg-white/5 text-gray-500 hover:bg-gray-300 dark:hover:bg-white/10'
                     }`}
                 >
                   24h
@@ -114,8 +118,8 @@ export default function Settings({
                 <button
                   onClick={() => onTimeFormatChange('12h')}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium font-mono transition-all ${timeFormat === '12h'
-                    ? 'bg-gray-800 dark:bg-white/20 text-white'
-                    : 'bg-gray-50 dark:bg-white/5 text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'
+                    ? 'bg-slate-900 dark:bg-white/20 text-white shadow-md'
+                    : 'bg-gray-200 dark:bg-white/5 text-gray-500 hover:bg-gray-300 dark:hover:bg-white/10'
                     }`}
                 >
                   12h
@@ -132,7 +136,7 @@ export default function Settings({
                 <select
                   value={timeZone}
                   onChange={(e) => onTimeZoneChange(e.target.value)}
-                  className="w-full appearance-none py-2.5 px-4 rounded-xl text-sm font-medium transition-all bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 outline-none border border-transparent focus:border-gray-200 dark:focus:border-white/10"
+                  className="w-full appearance-none py-2.5 px-4 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 outline-none border border-transparent focus:border-gray-200 dark:focus:border-white/10"
                 >
                   {Array.from(new Set(TIMEZONES.map(t => t.group))).map(group => (
                     <optgroup key={group} label={group} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-semibold">
@@ -149,6 +153,28 @@ export default function Settings({
                     <path d="M3 5l4 4 4-4" />
                   </svg>
                 </div>
+              </div>
+            </div>
+
+            {/* Wheel Detail (Resolution) */}
+            <div className="space-y-3 pb-4">
+              <label className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                Wheel Detail
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['minimal', 'standard', 'chronograph', 'technical'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => onMarkerResolutionChange(mode)}
+                    className={`py-2 px-3 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ${
+                      markerResolution === mode
+                        ? 'bg-slate-900 dark:bg-white/20 text-white shadow-md'
+                        : 'bg-gray-200 dark:bg-white/5 text-gray-500 hover:bg-gray-300 dark:hover:bg-white/10'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

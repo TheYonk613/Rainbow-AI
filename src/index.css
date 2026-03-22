@@ -34,9 +34,9 @@
   --g7-solar-start: #ffe93d; --g7-solar-mid: #aaff00; --g7-solar-end: #39ff14;
   --g7-solar-glow1: rgba(255, 233, 61, 0.2); --g7-solar-glow2: rgba(57, 255, 20, 0.1);
 
-  /* g8: Chrome Rose */
-  --g8-chrome-start: #cfd8dc; --g8-chrome-mid: #ff69b4; --g8-chrome-end: #ff2dff;
   --g8-chrome-glow1: rgba(255, 105, 180, 0.2); --g8-chrome-glow2: rgba(255, 45, 255, 0.1);
+  
+  --clock-filter: url(#hero-glow-black);
 }
 
 body {
@@ -584,6 +584,7 @@ body {
   --g6-uv-glow1: rgba(204, 0, 255, 0.55); --g6-uv-glow2: rgba(0, 153, 255, 0.3);
   --g7-solar-glow1: rgba(255, 233, 61, 0.5); --g7-solar-glow2: rgba(57, 255, 20, 0.3);
   --g8-chrome-glow1: rgba(255, 105, 180, 0.5); --g8-chrome-glow2: rgba(255, 45, 255, 0.35);
+  --clock-filter: url(#hero-glow-dark);
 }
 
 .dark .apple-calendar-menu {
@@ -896,20 +897,25 @@ body {
   stroke: rgba(255, 255, 255, 0.06);
 }
 
+/* ─── Hour markers ─── */
 .hour-marker {
-  fill: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.22);
+  fill: rgba(0, 0, 0, 0.22);
 }
 
 .dark .hour-marker {
-  fill: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.22);
+  fill: rgba(255, 255, 255, 0.22);
 }
 
 .hour-marker-major {
-  fill: rgba(0, 0, 0, 0.28);
+  color: rgba(0, 0, 0, 0.45);
+  fill: rgba(0, 0, 0, 0.45);
 }
 
 .dark .hour-marker-major {
-  fill: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.5);
+  fill: rgba(255, 255, 255, 0.5);
 }
 
 /* ─── Global Dark Mode transitions ─── */

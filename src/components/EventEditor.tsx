@@ -46,7 +46,10 @@ export default function EventEditor({ event, onSave, onCancel }: EventEditorProp
                         ref={inputRef}
                         className="event-editor-input"
                         value={title}
-                        onChange={(e) => setTitle(e.target.value)}
+                        onChange={(e) => {
+                            const val = e.target.value
+                            setTitle(val.length === 1 ? val.toUpperCase() : val)
+                        }}
                         placeholder="Event name"
                         maxLength={40}
                     />

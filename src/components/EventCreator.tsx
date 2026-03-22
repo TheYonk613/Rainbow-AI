@@ -104,7 +104,10 @@ export default function EventCreator({
             type="text"
             placeholder="What's happening?"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              setTitle(val.length === 1 ? val.toUpperCase() : val)
+            }}
             onKeyDown={handleKeyDown}
             className="w-full text-lg font-semibold text-gray-800 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent border-none outline-none"
           />

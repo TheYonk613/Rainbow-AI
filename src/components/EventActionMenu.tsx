@@ -146,7 +146,10 @@ export default function EventActionMenu({
                             type="text"
                             className="apple-menu-title-input editing"
                             value={event.title}
-                            onChange={(e) => onTitleChange(event.id, e.target.value)}
+                            onChange={(e) => {
+                                const val = e.target.value
+                                onTitleChange(event.id, val.length === 1 ? val.toUpperCase() : val)
+                            }}
                             onBlur={() => setIsEditingTitle(false)}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') inputRef.current?.blur()
@@ -213,7 +216,10 @@ export default function EventActionMenu({
                             ref={notesRef}
                             className="apple-menu-notes-input"
                             value={event.notes || ''}
-                            onChange={(e) => onNotesChange(event.id, e.target.value)}
+                            onChange={(e) => {
+                                const val = e.target.value
+                                onNotesChange(event.id, val.length === 1 ? val.toUpperCase() : val)
+                            }}
                             onBlur={() => setIsEditingNotes(false)}
                             placeholder="Add notes..."
                         />

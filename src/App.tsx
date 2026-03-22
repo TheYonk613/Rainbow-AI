@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import type { CalendarEvent, TimeFormat } from './types'
 import { SAMPLE_EVENTS } from './constants'
 import { useCurrentTime } from './hooks/useCurrentTime'
-import { defaultEventTimes, findGapAtTime, getZonedIsoDate } from './utils'
+import { defaultEventTimes, findGapAtTime } from './utils'
 import DayWheel from './components/DayWheel'
 import DateStrip from './components/DateStrip'
 import DeleteConfirm from './components/DeleteConfirm'
@@ -20,6 +20,7 @@ interface PersistedSettings {
   timeFormat: TimeFormat
   darkMode: boolean
   timeZone: string
+  markerResolution: 'minimal' | 'standard' | 'chronograph' | 'technical'
 }
 
 function loadSettings(): PersistedSettings {
@@ -31,6 +32,7 @@ function loadSettings(): PersistedSettings {
         timeFormat: parsed.timeFormat ?? '24h',
         darkMode: parsed.darkMode ?? false,
         timeZone: parsed.timeZone ?? 'system',
+        markerResolution: parsed.markerResolution ?? 'standard',
       }
     }
   } catch {
@@ -41,22 +43,20 @@ function loadSettings(): PersistedSettings {
     timeFormat: '24h',
     darkMode: false,
     timeZone: 'system',
+    markerResolution: 'standard',
   }
 }
 
 export default function App() {
   const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon'>('orbit')
   const [settings, setSettings] = useState<PersistedSettings>(loadSettings)
+  const { currentTime, todayDate } = useCurrentTime(settings.timeZone)
   
-  // Today's ISO date, computed using the correct timezone
-  const todayDate = useMemo(() => getZonedIsoDate(settings.timeZone), [settings.timeZone])
-  
-  // We initialize selectedDate only once and don't automatically break view when changing timezones
+  // We initialize selectedDate once. It stays on its selected day unless the user interacts.
   const [selectedDate, setSelectedDate] = useState<string>(todayDate)
 
   const [events, setEvents] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
   const [showSettings, setShowSettings] = useState(false)
-  const currentTime = useCurrentTime(settings.timeZone)
   const [creator, setCreator] = useState<{
     startH: number
     endH: number
@@ -86,6 +86,10 @@ export default function App() {
 
   const toggleDarkMode = useCallback(() => {
     setSettings((prev) => ({ ...prev, darkMode: !prev.darkMode }))
+  }, [])
+
+  const handleMarkerResolutionChange = useCallback((res: PersistedSettings['markerResolution']) => {
+    setSettings((prev) => ({ ...prev, markerResolution: res }))
   }, [])
 
   const handleGapClick = useCallback(
@@ -212,16 +216,16 @@ export default function App() {
       <header className="flex items-center justify-center pt-8 pb-2 relative z-20">
         <button
           onClick={toggleDarkMode}
-          className="absolute left-6 top-8 w-10 h-10 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:scale-110 transition-all active:scale-95 active:bg-black/5 dark:active:bg-white/10 z-30"
+          className="absolute left-6 top-8 w-11 h-11 rounded-full bg-slate-200/50 dark:bg-white/5 backdrop-blur-md shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-black/10 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:scale-105 transition-all active:scale-95 active:bg-slate-300/50 dark:active:bg-white/10 z-30"
           aria-label="Toggle Dark Mode"
         >
           {settings.darkMode ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="5" />
               <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
             </svg>
           )}
@@ -270,12 +274,16 @@ export default function App() {
             <div className="w-full max-w-[560px] flex flex-col items-center mb-2">
               <DayWheel
                 events={events.filter((e) => e.date === selectedDate)}
-                currentTime={selectedDate === todayDate ? currentTime : -1}
+                currentTime={currentTime}
+                selectedDate={selectedDate}
+                todayDate={todayDate}
                 timeFormat={settings.timeFormat}
+                markerResolution={settings.markerResolution}
                 selectedEventId={actionTarget?.event.id}
                 onGapClick={handleGapClick}
                 onEventClick={handleEventClick}
                 onEventTimeChange={handleEventTimeChange}
+                onResetView={() => setSelectedDate(todayDate)}
               />
             </div>
 
@@ -305,7 +313,7 @@ export default function App() {
       </div>
 
       {/* Bottom Navigation Dock */}
-      <div className="fixed bottom-6 left-6 z-40 flex items-center gap-2 p-1.5 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-2xl shadow-2xl shadow-black/15 border border-white/20 dark:border-white/10 transition-all duration-500">
+      <div className="fixed bottom-6 left-6 z-40 flex items-center gap-2 p-1.5 rounded-full bg-slate-200/60 dark:bg-black/40 backdrop-blur-3xl shadow-2xl shadow-black/10 dark:shadow-black/25 border border-white/50 dark:border-white/10 transition-all duration-500">
         <a
           href="/mockup.html"
           className="h-10 px-4 rounded-full bg-white/40 dark:bg-white/5 border border-transparent hover:border-gray-100 dark:hover:border-white/10 flex items-center gap-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:scale-105 transition-all active:scale-95 no-underline text-xs font-semibold tracking-wide"
@@ -321,9 +329,9 @@ export default function App() {
 
         <button
           onClick={() => setMode('orbit')}
-          className={`h-10 px-6 rounded-full text-sm tracking-wide font-semibold transition-all duration-200 active:scale-90 ${mode === 'orbit'
-            ? 'bg-white dark:bg-white shadow-lg text-gray-900'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100'
+          className={`h-10 px-6 rounded-full text-xs tracking-widest uppercase font-bold transition-all duration-200 active:scale-90 ${mode === 'orbit'
+            ? 'bg-slate-900 border border-white/20 text-white shadow-lg'
+            : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-100'
             }`}
         >
           Orbit
@@ -350,7 +358,7 @@ export default function App() {
 
       <button
         onClick={() => setShowSettings(true)}
-        className="fixed bottom-6 right-6 w-10 h-10 rounded-full bg-white/80 dark:bg-white/10 backdrop-blur shadow-lg shadow-black/5 dark:shadow-white/5 border border-gray-100 dark:border-white/10 flex items-center justify-center text-gray-400 dark:text-gray-300 dark:hover:text-white hover:text-gray-600 hover:scale-110 transition-all active:scale-95 z-30"
+        className="fixed bottom-6 right-6 w-11 h-11 rounded-full bg-slate-200/50 dark:bg-white/5 backdrop-blur-md shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-black/10 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:scale-105 transition-all active:scale-95 active:bg-slate-300/50 dark:active:bg-white/10 z-30"
         aria-label="Settings"
       >
         <svg
@@ -418,8 +426,10 @@ export default function App() {
             key="settings"
             timeFormat={settings.timeFormat}
             timeZone={settings.timeZone}
+            markerResolution={settings.markerResolution}
             onTimeFormatChange={handleTimeFormatChange}
             onTimeZoneChange={handleTimeZoneChange}
+            onMarkerResolutionChange={handleMarkerResolutionChange}
             onClose={() => setShowSettings(false)}
           />
         )}
