@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import type { CalendarEvent, EventType, TimeFormat } from '../types'
 import { EVENT_COLORS } from '../constants'
 import { generateId, formatTime } from '../utils'
@@ -6,8 +6,6 @@ import { generateId, formatTime } from '../utils'
 interface EventCreatorProps {
   startH: number
   endH: number
-  anchorX: number
-  anchorY: number
   timeFormat: TimeFormat
   onConfirm: (event: CalendarEvent) => void
   onCancel: () => void
@@ -16,46 +14,35 @@ interface EventCreatorProps {
 export default function EventCreator({
   startH,
   endH,
-  anchorX,
-  anchorY,
   timeFormat,
   onConfirm,
   onCancel,
 }: EventCreatorProps) {
   const [title, setTitle] = useState('')
-  const [type, setType] = useState<EventType>('fluid')
-  const [color, setColor] = useState(() => {
-    // Pick a random color from the palette
-    return EVENT_COLORS[Math.floor(Math.random() * EVENT_COLORS.length)]
-  })
+  const [localStartH, setLocalStartH] = useState(startH)
+  const [localEndH, setLocalEndH] = useState(endH)
+  const [type] = useState<EventType>('fluid')
+  const [color, setColor] = useState(() => "g2-inferno")
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Auto-focus the input on mount
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Small delay so the pop-in animation starts first
     const t = setTimeout(() => inputRef.current?.focus(), 80)
     return () => clearTimeout(t)
   }, [])
-
-  // Close on Escape
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel()
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [onCancel])
 
   const handleSubmit = () => {
     const finalTitle = title.trim() || 'New Event'
     onConfirm({
       id: generateId(),
       title: finalTitle,
-      startH,
-      endH,
+      startH: localStartH,
+      endH: localEndH,
       color,
       type,
       isNew: true,
+      date: '' // This will be stamped by App.tsx
     })
   }
 
@@ -66,96 +53,105 @@ export default function EventCreator({
     }
   }
 
-  // Position popover near the click, but keep it on-screen
-  const popWidth = 280
-  const popHeight = 280
-  const margin = 16
-  const left = Math.min(
-    Math.max(margin, anchorX - popWidth / 2),
-    window.innerWidth - popWidth - margin
-  )
-  const top = Math.min(
-    Math.max(margin, anchorY + 24),
-    window.innerHeight - popHeight - margin
-  )
+  // Position color picker dots in an arc at bottom
+  const archRadius = 95
+  const colorCount = EVENT_COLORS.length
+  const totalAngle = 110
+  const startAngle = 90 - totalAngle / 2
+
+  const timeOptions = Array.from({ length: 48 }, (_, i) => i * 0.5)
 
   return (
-    <>
-      {/* Backdrop — click to cancel */}
-      <div
-        className="fixed inset-0 z-40"
-        onClick={onCancel}
-      />
-
-      {/* Popover */}
-      <div
-        className="fixed z-50 animate-pop-in"
-        style={{ left, top, width: popWidth }}
-      >
-        <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-xl shadow-black/8 dark:shadow-black/40 border border-gray-100 dark:border-white/10 p-5 space-y-4">
-          {/* Time display */}
-          <div className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wide">
-            {formatTime(startH, timeFormat)} — {formatTime(endH, timeFormat)}
-          </div>
-
-          {/* Title input */}
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="What's happening?"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="w-full text-lg font-semibold text-gray-800 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent border-none outline-none"
-          />
-
-          {/* Type toggle */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setType('fluid')}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${type === 'fluid'
-                  ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/30'
-                  : 'bg-gray-50 text-gray-400 dark:bg-white/5 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10'
-                }`}
-            >
-              Fluid
-            </button>
-            <button
-              onClick={() => setType('solid')}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${type === 'solid'
-                  ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:ring-rose-500/30'
-                  : 'bg-gray-50 text-gray-400 dark:bg-white/5 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10'
-                }`}
-            >
-              Solid
-            </button>
-          </div>
-
-          {/* Color picker */}
-          <div className="flex gap-2 justify-center">
-            {EVENT_COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                className={`w-7 h-7 rounded-full transition-all ${color === c
-                    ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-offset-[#1e1e1e] dark:ring-white/50 scale-110'
-                    : 'hover:scale-110 opacity-60 hover:opacity-100'
-                  }`}
-                style={{ backgroundColor: `var(--${c}-mid)` }}
-              />
-            ))}
-          </div>
-
-          {/* Create button */}
-          <button
-            onClick={handleSubmit}
-            className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-            style={{ backgroundColor: `var(--${color}-mid)` }}
-          >
-            Create Event
-          </button>
-        </div>
+    <div className="bubble-orbit-layout w-full h-full flex flex-col pt-8 pb-4 relative z-10" onClick={(e) => e.stopPropagation()}>
+      
+      {/* 1) Top: Time Range */}
+      <div className="flex justify-center items-center w-full mt-2 gap-2 text-white/80">
+        <select
+          value={localStartH}
+          onChange={(e) => setLocalStartH(Number(e.target.value))}
+          className="bg-transparent text-sm appearance-none outline-none cursor-pointer hover:text-white transition-colors"
+          style={{ textAlignLast: 'center' }}
+        >
+          {timeOptions.map((t) => (
+            <option key={t} value={t} className="text-black">{formatTime(t, timeFormat)}</option>
+          ))}
+        </select>
+        <span className="opacity-50">—</span>
+        <select
+          value={localEndH}
+          onChange={(e) => setLocalEndH(Number(e.target.value))}
+          className="bg-transparent text-sm appearance-none outline-none cursor-pointer hover:text-white transition-colors"
+          style={{ textAlignLast: 'center' }}
+        >
+          {timeOptions.map((t) => (
+            <option key={t} value={t} className="text-black">{formatTime(t, timeFormat)}</option>
+          ))}
+        </select>
       </div>
-    </>
+
+      {/* 2) Middle: Title Input & Create Button */}
+      <div className="flex-1 flex flex-col justify-center items-center px-6 w-full gap-4 mt-2">
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="New Event"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="bubble-title-input w-full"
+          style={{ fontSize: '1.4rem', borderBottomColor: 'rgba(255,255,255,0.2)' }}
+        />
+        
+        <button
+          onClick={handleSubmit}
+          className="create-event-btn hover:bg-white/10 transition-colors"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(10px)',
+            color: '#fff',
+            fontWeight: 700,
+            padding: '10px 24px',
+            borderRadius: '999px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            marginTop: '8px',
+          }}
+        >
+          Create Event
+        </button>
+      </div>
+
+      {/* 3) Bottom Arc: Color Picker */}
+      {EVENT_COLORS.map((c, i) => {
+        const angleDeg = startAngle + i * (totalAngle / (colorCount - 1))
+        const angleRad = (angleDeg * Math.PI) / 180
+        const x = Math.cos(angleRad) * archRadius
+        const y = Math.sin(angleRad) * archRadius
+
+        return (
+          <div
+            key={c}
+            onClick={() => setColor(c)}
+            className="bubble-color-arc absolute cursor-pointer"
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: '50%',
+              backgroundColor: `var(--${c}-mid)`,
+              transform: `translate(${x}px, ${y}px)`,
+              top: '50%',
+              left: '50%',
+              marginTop: '-8px',
+              marginLeft: '-8px',
+              boxShadow: color === c 
+                ? '0 0 0 2px rgba(255,255,255,0.8), 0 0 8px rgba(0,0,0,0.3)' 
+                : '0 2px 4px rgba(0,0,0,0.2)',
+              opacity: color === c ? 1 : 0.6,
+              transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)'
+            }}
+          />
+        )
+      })}
+    </div>
   )
 }
