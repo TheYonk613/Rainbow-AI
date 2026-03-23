@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import type { CalendarEvent, TimeFormat } from './types'
 import { SAMPLE_EVENTS } from './constants'
@@ -8,10 +8,13 @@ import DayWheel from './components/DayWheel'
 import DateStrip from './components/DateStrip'
 import DeleteConfirm from './components/DeleteConfirm'
 import EventActionMenu from './components/EventActionMenu'
+import TetheredBubble from './components/TetheredBubble'
 import EventCreator from './components/EventCreator'
 import EventEditor from './components/EventEditor'
 import Settings from './components/Settings'
 import TasksPage from './components/TasksPage'
+import { JourneyPage } from './components/JourneyPage'
+import { JourneyIcon } from './components/JourneyIcon'
 
 const STORAGE_KEY = 'ra1nbow-settings'
 const POP_DURATION_MS = 550
@@ -45,7 +48,8 @@ function loadSettings(): PersistedSettings {
 }
 
 export default function App() {
-  const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon'>('orbit')
+  const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon' | 'journey'>('orbit')
+  const prevModeRef = useRef<'orbit' | 'rainbow' | 'balloon'>('orbit')
   const [settings, setSettings] = useState<PersistedSettings>(loadSettings)
   
   // Today's ISO date, computed using the correct timezone
@@ -62,12 +66,16 @@ export default function App() {
     endH: number
     anchorX: number
     anchorY: number
+    centerX?: number
+    centerY?: number
   } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null)
   const [actionTarget, setActionTarget] = useState<{
     event: CalendarEvent
     anchorX: number
     anchorY: number
+    centerX: number
+    centerY: number
   } | null>(null)
   const [lastMenuPos, setLastMenuPos] = useState<{ x: number, y: number } | null>(null)
   const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null)
@@ -89,12 +97,12 @@ export default function App() {
   }, [])
 
   const handleGapClick = useCallback(
-    (hour: number, clientX: number, clientY: number) => {
+    (hour: number, clientX: number, clientY: number, centerX?: number, centerY?: number) => {
       const dayEvents = events.filter((e) => e.date === selectedDate)
       const gap = findGapAtTime(dayEvents, hour)
       if (!gap) return
       const { startH, endH } = defaultEventTimes(hour, gap)
-      setCreator({ startH, endH, anchorX: clientX, anchorY: clientY })
+      setCreator({ startH, endH, anchorX: clientX, anchorY: clientY, centerX: centerX ?? clientX, centerY: centerY ?? clientY })
     },
     [events, selectedDate]
   )
@@ -112,9 +120,10 @@ export default function App() {
 
   const handleCancelCreate = useCallback(() => setCreator(null), [])
 
-  const handleEventClick = useCallback((event: CalendarEvent, clientX: number, clientY: number) => {
+  const handleEventClick = useCallback((event: CalendarEvent, clientX: number, clientY: number, centerX?: number, centerY?: number) => {
     if (mode !== 'orbit') return
-    setActionTarget({ event, anchorX: clientX, anchorY: clientY })
+    // centerX/centerY always provided in orbit mode from DayWheel
+    setActionTarget({ event, anchorX: clientX, anchorY: clientY, centerX: centerX ?? clientX, centerY: centerY ?? clientY })
   }, [mode])
 
   const handleConfirmDelete = useCallback(() => {
@@ -192,7 +201,7 @@ export default function App() {
 
   const handleCancelDelete = useCallback(() => {
     if (deleteTarget && lastMenuPos) {
-      setActionTarget({ event: deleteTarget, anchorX: lastMenuPos.x, anchorY: lastMenuPos.y })
+      setActionTarget({ event: deleteTarget, anchorX: lastMenuPos.x, anchorY: lastMenuPos.y, centerX: lastMenuPos.x, centerY: lastMenuPos.y })
     }
     setDeleteTarget(null)
   }, [deleteTarget, lastMenuPos])
@@ -206,6 +215,17 @@ export default function App() {
       setEditTarget(null)
     }
   }, [mode])
+
+  const handleOpenJourney = useCallback(() => {
+    if (mode !== 'journey') {
+      prevModeRef.current = mode as 'orbit' | 'rainbow' | 'balloon'
+    }
+    setMode('journey')
+  }, [mode])
+
+  const handleCloseJourney = useCallback(() => {
+    setMode(prevModeRef.current ?? 'orbit')
+  }, [])
 
   return (
     <div className={`min-h-screen transition-colors duration-500 flex flex-col ${settings.darkMode ? 'dark bg-[#121212]' : 'bg-[#f7f6f3]'} bg-noise`}>
@@ -229,6 +249,13 @@ export default function App() {
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E07B6C] via-[#8B8FD8] to-[#8BA89A]" />
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight transition-colors">Ra1nbow</h1>
+        </div>
+        {/* Journey icon — top right, glows at 7PM */}
+        <div className="absolute right-6 top-8 z-30">
+          <JourneyIcon
+            onClick={handleOpenJourney}
+            isActive={mode === 'journey'}
+          />
         </div>
       </header>
 
@@ -272,6 +299,7 @@ export default function App() {
                 events={events.filter((e) => e.date === selectedDate)}
                 currentTime={selectedDate === todayDate ? currentTime : -1}
                 timeFormat={settings.timeFormat}
+                selectedEventId={actionTarget?.event.id}
                 onGapClick={handleGapClick}
                 onEventClick={handleEventClick}
                 onEventTimeChange={handleEventTimeChange}
@@ -301,22 +329,19 @@ export default function App() {
         >
           <TasksPage />
         </div>
+
+        {/* Journey View */}
+        <AnimatePresence>
+          {mode === 'journey' && (
+            <div className="absolute inset-0 z-20">
+              <JourneyPage onBack={handleCloseJourney} />
+            </div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Bottom Navigation Dock */}
       <div className="fixed bottom-6 left-6 z-40 flex items-center gap-2 p-1.5 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-2xl shadow-2xl shadow-black/15 border border-white/20 dark:border-white/10 transition-all duration-500">
-        <a
-          href="/mockup.html"
-          className="h-10 px-4 rounded-full bg-white/40 dark:bg-white/5 border border-transparent hover:border-gray-100 dark:hover:border-white/10 flex items-center gap-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:scale-105 transition-all active:scale-95 no-underline text-xs font-semibold tracking-wide"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="3" width="20" height="18" rx="3" />
-            <path d="M2 9h20" />
-          </svg>
-          Card Mode
-        </a>
-
-        <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-1" />
 
         <button
           onClick={() => setMode('orbit')}
@@ -368,32 +393,67 @@ export default function App() {
       </button>
 
       {creator && (
-        <EventCreator
-          startH={creator.startH}
-          endH={creator.endH}
+        <TetheredBubble
           anchorX={creator.anchorX}
           anchorY={creator.anchorY}
-          timeFormat={settings.timeFormat}
-          onConfirm={handleCreateEvent}
-          onCancel={handleCancelCreate}
-        />
+          centerX={creator.centerX!}
+          centerY={creator.centerY!}
+          color="rainbow"
+          onClickOutside={handleCancelCreate}
+        >
+          <EventCreator
+            startH={creator.startH}
+            endH={creator.endH}
+            timeFormat={settings.timeFormat}
+            onConfirm={handleCreateEvent}
+            onCancel={handleCancelCreate}
+          />
+        </TetheredBubble>
       )}
 
-      {actionTarget && (
-        <EventActionMenu
-          event={actionTarget.event}
-          anchorX={actionTarget.anchorX}
-          anchorY={actionTarget.anchorY}
-          onColorChange={handleColorChange}
-          onTitleChange={handleRenameEvent}
-          onNotesChange={handleUpdateNotes}
-          onTimeChange={handleTimeChange}
-          onEdit={handleEditEvent}
-          onToggleImpassable={handleToggleImpassable}
-          onDelete={handleDeleteEvent}
-          onClose={handleCloseActionMenu}
-        />
-      )}
+      <AnimatePresence>
+        {actionTarget && mode === 'orbit' ? (
+          <TetheredBubble
+            key={actionTarget.event.id}
+            anchorX={actionTarget.anchorX}
+            anchorY={actionTarget.anchorY}
+            centerX={actionTarget.centerX}
+            centerY={actionTarget.centerY}
+            color={actionTarget.event.color}
+            onClickOutside={handleCloseActionMenu}
+          >
+            <EventActionMenu
+              event={actionTarget.event}
+              anchorX={actionTarget.anchorX}
+              anchorY={actionTarget.anchorY}
+              isOrbitMode
+              onColorChange={handleColorChange}
+              onTitleChange={handleRenameEvent}
+              onNotesChange={handleUpdateNotes}
+              onTimeChange={handleTimeChange}
+              onEdit={handleEditEvent}
+              onToggleImpassable={handleToggleImpassable}
+              onDelete={handleDeleteEvent}
+              onClose={handleCloseActionMenu}
+            />
+          </TetheredBubble>
+        ) : actionTarget ? (
+          <EventActionMenu
+            key={actionTarget.event.id}
+            event={actionTarget.event}
+            anchorX={actionTarget.anchorX}
+            anchorY={actionTarget.anchorY}
+            onColorChange={handleColorChange}
+            onTitleChange={handleRenameEvent}
+            onNotesChange={handleUpdateNotes}
+            onTimeChange={handleTimeChange}
+            onEdit={handleEditEvent}
+            onToggleImpassable={handleToggleImpassable}
+            onDelete={handleDeleteEvent}
+            onClose={handleCloseActionMenu}
+          />
+        ) : null}
+      </AnimatePresence>
 
       {editTarget && (
         <EventEditor

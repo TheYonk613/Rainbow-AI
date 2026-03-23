@@ -62,6 +62,7 @@ export default function TasksPage() {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
     const [poppingTasks, setPoppingTasks] = useState<PoppingTask[]>([])
+    const [completedTasks, setCompletedTasks] = useState<Task[]>([])
 
     // Persist on every task change
     useEffect(() => { saveTasks(tasks) }, [tasks])
@@ -169,8 +170,9 @@ export default function TasksPage() {
         setHoveredIndex(null)
     }, [tasks.length, layout])
 
-    const finishMigration = useCallback((taskId: string) => {
-        setPoppingTasks(prev => prev.filter(p => p.task.id !== taskId))
+    const finishMigration = useCallback((task: Task) => {
+        setPoppingTasks(prev => prev.filter(p => p.task.id !== task.id))
+        setCompletedTasks(prev => [...prev, task])
     }, [])
 
     // Compute the viewport coords of the balloon knot so the modal
@@ -319,12 +321,52 @@ export default function TasksPage() {
                         text={task.text}
                         startX={startX}
                         startY={startY}
-                        targetX={window.innerWidth - 80}
-                        targetY={80}
-                        onComplete={() => finishMigration(task.id)}
+                        onComplete={() => finishMigration(task)}
                     />
                 </div>
             ))}
+
+            {/* Completed Tasks Viewer */}
+            <div className="fixed bottom-[45px] right-[45px] z-[900] flex flex-col items-end group">
+                {/* The list (revealed on hover) */}
+                <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 pointer-events-none group-hover:pointer-events-auto mb-3">
+                    <motion.div
+                        className="flex flex-col items-end space-y-2 pr-2"
+                        initial="hidden"
+                        whileInView="visible"
+                        variants={{
+                            visible: { transition: { staggerChildren: 0.05 } }
+                        }}
+                    >
+                        {completedTasks.slice(-10).reverse().map((t, i) => (
+                            <motion.div
+                                key={`completed-${t.id}`}
+                                variants={{
+                                    hidden: { opacity: 0, x: 20 },
+                                    visible: { opacity: 1, x: 0 }
+                                }}
+                                className="flex items-center gap-2.5"
+                            >
+                                <span className="text-[13px] font-medium tracking-tight text-black dark:text-white/90">
+                                    {t.text}
+                                </span>
+                                <div
+                                    className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]"
+                                    style={{ backgroundColor: t.color || '#4ECDC4' }}
+                                />
+                            </motion.div>
+                        ))}
+                    </motion.div>
+                </div>
+
+                {/* The hover target / button */}
+                <div className="flex items-center gap-2 px-3 py-1.5 cursor-default group/tally">
+                    <span className="text-[11px] font-bold tracking-widest uppercase text-gray-400 group-hover/tally:text-black dark:text-gray-500 dark:group-hover/tally:text-white transition-colors duration-300">
+                        {completedTasks.length} Completed
+                    </span>
+                    <div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700 group-hover/tally:scale-150 transition-transform" />
+                </div>
+            </div>
         </div>
     )
 }
