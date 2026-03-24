@@ -1,7 +1,12 @@
+<<<<<<< Updated upstream
 import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
+=======
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+>>>>>>> Stashed changes
 import type { CalendarEvent, TimeFormat } from './types'
-import { SAMPLE_EVENTS } from './constants'
+import { type CompletedTask, type JourneyBeat } from './data/journeyMockData'
 import { useCurrentTime } from './hooks/useCurrentTime'
 import { defaultEventTimes, findGapAtTime } from './utils'
 import DayWheel from './components/DayWheel'
@@ -12,6 +17,12 @@ import EventCreator from './components/EventCreator'
 import EventEditor from './components/EventEditor'
 import Settings from './components/Settings'
 import TasksPage from './components/TasksPage'
+<<<<<<< Updated upstream
+=======
+import { JourneyPage } from './components/JourneyPage'
+import { JourneyIcon } from './components/JourneyIcon'
+import VoiceButton from './components/VoiceButton'
+>>>>>>> Stashed changes
 
 const STORAGE_KEY = 'ra1nbow-settings'
 const POP_DURATION_MS = 550
@@ -55,8 +66,15 @@ export default function App() {
   // We initialize selectedDate once. It stays on its selected day unless the user interacts.
   const [selectedDate, setSelectedDate] = useState<string>(todayDate)
 
-  const [events, setEvents] = useState<CalendarEvent[]>(SAMPLE_EVENTS)
+  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([])
+  const [beats, setBeats] = useState<JourneyBeat[]>([])
   const [showSettings, setShowSettings] = useState(false)
+<<<<<<< Updated upstream
+=======
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const currentTime = useCurrentTime(settings.timeZone)
+>>>>>>> Stashed changes
   const [creator, setCreator] = useState<{
     startH: number
     endH: number
@@ -64,6 +82,48 @@ export default function App() {
     anchorY: number
   } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null)
+  const [aiResponse, setAiResponse] = useState<{ message: string; sub?: string } | null>(null)
+  
+  const fetchJourney = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await fetch(`http://localhost:3001/api/calendar/journey?date=${today}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCompletedTasks(data.completedTasks || []);
+        setBeats(data.beats || []);
+      }
+    } catch (err) {
+      console.error('Journey Fetch Pipeline Offline:', err);
+    }
+  }, []);
+
+  const fetchEvents = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:3001/api/calendar/events');
+      if (res.ok) {
+          const data = await res.json();
+          setEvents(data || []);
+          setIsAuthenticated(true);
+      }
+    } catch (err) {
+      console.error('Backend Integration Pipeline Offline:', err);
+    }
+  }, []);
+
+  const handleAiAction = useCallback((transcript?: string, aiData?: any) => {
+    if (aiData?.message) {
+      setAiResponse({ message: aiData.message, sub: aiData.mockTranscript || transcript })
+      setTimeout(() => setAiResponse(null), 8000)
+      // REFRESH DAYWHEEL WITH NATIVE SQLITE CHANGES INSTANTLY!
+      fetchEvents();
+      fetchJourney();
+    } else if (aiData?.error) {
+      setAiResponse({ message: 'Execution Blocked', sub: aiData.error })
+      setTimeout(() => setAiResponse(null), 8000)
+    }
+  }, [fetchEvents, fetchJourney])
+
   const [actionTarget, setActionTarget] = useState<{
     event: CalendarEvent
     anchorX: number
@@ -75,6 +135,34 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
   }, [settings])
+
+  // OAuth Ingress Hook
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const loginStatus = params.get('login')
+    if (loginStatus === 'success') {
+      setIsAuthenticated(true)
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname
+      window.history.replaceState({ path: cleanUrl }, '', cleanUrl)
+    }
+  }, [])
+
+  // Phase 2: Autonomous SQLite Local Database Data Overrides
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        await fetch('http://localhost:3001/api/calendar/sync', { method: 'POST' });
+        if (isMounted) {
+          await fetchEvents();
+          await fetchJourney();
+        }
+      } catch (err) {
+        console.error('Initial sync failed', err);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [fetchEvents, fetchJourney]);
 
   const handleTimeFormatChange = useCallback((f: TimeFormat) => {
     setSettings((prev) => ({ ...prev, timeFormat: f }))
@@ -127,20 +215,45 @@ export default function App() {
     const targetId = deleteTarget.id
     setDeleteTarget(null)
 
+    // Optimistic UI Google Deletion Bridge
+    fetch(`http://localhost:3001/api/calendar/events/${targetId}`, { method: 'DELETE' })
+      .catch(err => console.error('Remote deletion failed', err))
+
     setEvents((prev) => prev.map((e) => (e.id === targetId ? { ...e, isPopping: true } : e)))
 
     setTimeout(() => {
       setEvents((prev) => prev.filter((e) => e.id !== targetId))
+      fetchJourney()
     }, POP_DURATION_MS)
-  }, [deleteTarget])
+  }, [deleteTarget, fetchJourney])
 
 
   const handleEventTimeChange = useCallback((id: string, startH: number, endH: number) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, startH, endH } : e)))
+    setEvents((prev) => prev.map((e) => {
+      if (e.id === id) {
+        // Optimistic UI Update Backend Call - Never pauses React rendering
+        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: e.date, startH, endH, title: e.title })
+        }).catch(err => console.error('Sync failed:', err));
+        return { ...e, startH, endH };
+      }
+      return e;
+    }))
   }, [])
 
   const handleRenameEvent = useCallback((id: string, newTitle: string) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, title: newTitle } : e)))
+    setEvents((prev) => prev.map((e) => {
+      if (e.id === id) {
+        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: e.date, startH: e.startH, endH: e.endH, title: newTitle })
+        }).catch(err => console.error('Sync failed:', err));
+        return { ...e, title: newTitle };
+      }
+      return e;
+    }))
     setEditTarget(null)
     setActionTarget((prev) =>
       prev && prev.event.id === id ? { ...prev, event: { ...prev.event, title: newTitle } } : prev
@@ -175,7 +288,16 @@ export default function App() {
   }, [])
 
   const handleTimeChange = useCallback((id: string, startH: number, endH: number) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, startH, endH } : e)))
+    setEvents((prev) => prev.map((e) => {
+      if (e.id === id) {
+        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: e.date, startH, endH, title: e.title })
+        }).catch(err => console.error('Sync failed:', err));
+        return { ...e, startH, endH };
+      }
+      return e;
+    }))
     setActionTarget((prev) =>
       prev && prev.event.id === id ? { ...prev, event: { ...prev.event, startH, endH } } : prev
     )
@@ -190,6 +312,22 @@ export default function App() {
     })
   }, [])
 
+  const handleCompleteEvent = useCallback((event: CalendarEvent) => {
+    setActionTarget(null)
+    const targetId = event.id
+
+    // Optimistic UI Backend Bridge for Completion
+    fetch(`http://localhost:3001/api/calendar/events/${targetId}/complete`, { method: 'POST' })
+      .catch(err => console.error('Remote completion failed', err))
+
+    setEvents((prev) => prev.map((e) => (e.id === targetId ? { ...e, isPopping: true } : e)))
+
+    setTimeout(() => {
+      setEvents((prev) => prev.filter((e) => e.id !== targetId))
+      fetchJourney()
+    }, POP_DURATION_MS)
+  }, [fetchJourney])
+
   const handleCloseActionMenu = useCallback(() => {
     setActionTarget(null)
   }, [])
@@ -202,6 +340,19 @@ export default function App() {
   }, [deleteTarget, lastMenuPos])
 
   // Close ring-only overlays when leaving the orbit view
+  const handleRestoreEvent = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`http://localhost:3001/api/calendar/events/${id}/restore`, { method: 'POST' });
+      if (res.ok) {
+        // Refresh both views to keep state consistent across Orbit and Journey
+        await fetchEvents();
+        await fetchJourney();
+      }
+    } catch (err) {
+      console.error('Restoration failed', err);
+    }
+  }, [fetchEvents, fetchJourney]);
+
   useEffect(() => {
     if (mode !== 'orbit') {
       setCreator(null)
@@ -211,6 +362,22 @@ export default function App() {
     }
   }, [mode])
 
+<<<<<<< Updated upstream
+=======
+  const handleToggleJourney = useCallback(() => {
+    if (mode === 'journey') {
+      setMode(prevModeRef.current ?? 'orbit')
+    } else {
+      prevModeRef.current = mode as 'orbit' | 'rainbow' | 'balloon'
+      setMode('journey')
+    }
+  }, [mode])
+
+  const handleCloseJourney = useCallback(() => {
+    setMode(prevModeRef.current ?? 'orbit')
+  }, [])
+
+>>>>>>> Stashed changes
   return (
     <div className={`min-h-screen transition-colors duration-500 flex flex-col ${settings.darkMode ? 'dark bg-[#121212]' : 'bg-[#f7f6f3]'} bg-noise`}>
       <header className="flex items-center justify-center pt-8 pb-2 relative z-20">
@@ -232,8 +399,25 @@ export default function App() {
         </button>
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E07B6C] via-[#8B8FD8] to-[#8BA89A]" />
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight transition-colors">Ra1nbow</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight transition-colors">Ra1nbow</h1>
+            {isAuthenticated && settings.timeZone && (
+              <span className="text-[10px] font-bold bg-[#E07B6C]/10 text-[#E07B6C] border border-[#E07B6C]/20 px-2 py-0.5 rounded-full tracking-widest uppercase ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                Local-Only
+              </span>
+            )}
+          </div>
         </div>
+<<<<<<< Updated upstream
+=======
+        {/* Journey icon — top right, glows at 7PM */}
+        <div className="absolute right-6 top-8 z-30">
+          <JourneyIcon
+            onClick={handleToggleJourney}
+            isActive={mode === 'journey'}
+          />
+        </div>
+>>>>>>> Stashed changes
       </header>
 
       {/* Views Container */}
@@ -254,6 +438,20 @@ export default function App() {
             }`}
         >
           <main className="flex-1 flex flex-col items-center justify-center px-4 overflow-hidden relative">
+            <AnimatePresence>
+              {aiResponse && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                  className="absolute bottom-[20%] left-1/2 -translate-x-1/2 z-50 bg-gray-900/95 dark:bg-white/95 text-white dark:text-gray-900 py-3 px-6 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] backdrop-blur-xl border border-white/10 dark:border-black/5 max-w-sm text-center"
+                >
+                  <p className="font-bold text-[13px] tracking-wide">{aiResponse.message}</p>
+                  {aiResponse.sub && <p className="text-[11px] opacity-70 mt-1.5 font-mono bg-black/20 dark:bg-black/5 px-2 py-1 rounded-md line-clamp-2">"{aiResponse.sub}"</p>}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Date label — moved even higher to clear the top of the ring */}
             <div className="absolute top-1 left-0 right-0 flex items-center justify-center z-10">
               <div className="date-label" key={selectedDate}>
@@ -271,20 +469,29 @@ export default function App() {
             </div>
 
             {/* Top Area: DayWheel Ring */}
-            <div className="w-full max-w-[560px] flex flex-col items-center mb-2">
+            <div className="w-full max-w-[560px] flex flex-col items-center mb-2 relative group">
               <DayWheel
                 events={events.filter((e) => e.date === selectedDate)}
                 currentTime={currentTime}
                 selectedDate={selectedDate}
                 todayDate={todayDate}
                 timeFormat={settings.timeFormat}
+<<<<<<< Updated upstream
                 markerResolution={settings.markerResolution}
+=======
+                dateLabel={new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+>>>>>>> Stashed changes
                 selectedEventId={actionTarget?.event.id}
                 onGapClick={handleGapClick}
                 onEventClick={handleEventClick}
                 onEventTimeChange={handleEventTimeChange}
                 onResetView={() => setSelectedDate(todayDate)}
               />
+              <VoiceButton onAiAction={handleAiAction} />
             </div>
 
             {/* Middle Area: Date Wheel Selection */}
@@ -310,6 +517,23 @@ export default function App() {
         >
           <TasksPage />
         </div>
+<<<<<<< Updated upstream
+=======
+
+        {/* Journey View */}
+        <AnimatePresence>
+          {mode === 'journey' && (
+            <div className="absolute inset-0 z-20">
+              <JourneyPage 
+                onBack={handleCloseJourney} 
+                completedTasks={completedTasks} 
+                beats={beats} 
+                onRestore={handleRestoreEvent}
+              />
+            </div>
+          )}
+        </AnimatePresence>
+>>>>>>> Stashed changes
       </div>
 
       {/* Bottom Navigation Dock */}
@@ -388,6 +612,7 @@ export default function App() {
         />
       )}
 
+<<<<<<< Updated upstream
       {actionTarget && (
         <EventActionMenu
           event={actionTarget.event}
@@ -403,6 +628,53 @@ export default function App() {
           onClose={handleCloseActionMenu}
         />
       )}
+=======
+      <AnimatePresence>
+        {actionTarget && mode === 'orbit' ? (
+          <TetheredBubble
+            key={actionTarget.event.id}
+            anchorX={actionTarget.anchorX}
+            anchorY={actionTarget.anchorY}
+            centerX={actionTarget.centerX}
+            centerY={actionTarget.centerY}
+            color={actionTarget.event.color}
+            onClickOutside={handleCloseActionMenu}
+          >
+            <EventActionMenu
+              event={actionTarget.event}
+              anchorX={actionTarget.anchorX}
+              anchorY={actionTarget.anchorY}
+              isOrbitMode
+              onColorChange={handleColorChange}
+              onTitleChange={handleRenameEvent}
+              onNotesChange={handleUpdateNotes}
+              onTimeChange={handleTimeChange}
+              onEdit={handleEditEvent}
+              onToggleImpassable={handleToggleImpassable}
+              onDelete={handleDeleteEvent}
+              onComplete={handleCompleteEvent}
+              onClose={handleCloseActionMenu}
+            />
+          </TetheredBubble>
+        ) : actionTarget ? (
+          <EventActionMenu
+            key={actionTarget.event.id}
+            event={actionTarget.event}
+            anchorX={actionTarget.anchorX}
+            anchorY={actionTarget.anchorY}
+            onColorChange={handleColorChange}
+            onTitleChange={handleRenameEvent}
+            onNotesChange={handleUpdateNotes}
+            onTimeChange={handleTimeChange}
+            onEdit={handleEditEvent}
+            onToggleImpassable={handleToggleImpassable}
+            onDelete={handleDeleteEvent}
+            onComplete={handleCompleteEvent}
+            onClose={handleCloseActionMenu}
+          />
+        ) : null}
+      </AnimatePresence>
+>>>>>>> Stashed changes
 
       {editTarget && (
         <EventEditor

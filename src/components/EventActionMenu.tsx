@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+<<<<<<< Updated upstream
+=======
+import { Edit2, Trash2, Check } from 'lucide-react'
+>>>>>>> Stashed changes
 import type { CalendarEvent } from '../types'
 import { EVENT_COLORS } from '../constants'
 import { snapToFiveMinutes } from '../utils'
@@ -16,6 +20,7 @@ interface EventActionMenuProps {
     onEdit: (event: CalendarEvent) => void
     onToggleImpassable: (id: string) => void
     onDelete: (event: CalendarEvent) => void
+    onComplete?: (event: CalendarEvent) => void
     onClose: () => void
 }
 
@@ -30,6 +35,7 @@ export default function EventActionMenu({
     onEdit,
     onToggleImpassable,
     onDelete,
+    onComplete,
     onClose,
 }: EventActionMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null)
@@ -110,6 +116,7 @@ export default function EventActionMenu({
     }
 
     const toTimeInputValue = (hour: number) => {
+        if (hour < 0) return '00:00'
         const h = Math.floor(hour) % 24
         const m = Math.round((hour - Math.floor(hour)) * 60)
         return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
@@ -134,6 +141,7 @@ export default function EventActionMenu({
                     <span className="apple-menu-date">{dateStr}</span>
                 </div>
 
+<<<<<<< Updated upstream
                 {/* Editable Title Section */}
                 <div className="apple-menu-title-row">
                     <div
@@ -154,6 +162,95 @@ export default function EventActionMenu({
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') inputRef.current?.blur()
                             }}
+=======
+                {/* Middle: Action Hub (Edit / Delete) */}
+                <div className="preview-action-hub">
+                    <button
+                        className="preview-action-btn"
+                        onClick={(e) => { e.stopPropagation(); onEdit(event) }}
+                        title="Edit event details"
+                        aria-label="Edit event details"
+                    >
+                        <Edit2 size={16} strokeWidth={2.5} />
+                    </button>
+                    {onComplete && (
+                        <button
+                            className="preview-action-btn complete"
+                            onClick={(e) => { e.stopPropagation(); onComplete(event) }}
+                            title="Mark as completed"
+                            aria-label="Mark as completed"
+                        >
+                            <Check size={16} strokeWidth={2.5} />
+                        </button>
+                    )}
+                    <button
+                        className="preview-action-btn delete"
+                        onClick={(e) => { e.stopPropagation(); onDelete(event) }}
+                        title="Delete event"
+                        aria-label="Delete event"
+                    >
+                        <Trash2 size={16} strokeWidth={2.5} />
+                    </button>
+                </div>
+
+                {/* Bottom: Curved color arc following inner circle */}
+                <div className="bubble-color-arc">
+                    {EVENT_COLORS.map((c, i) => {
+                        const total = EVENT_COLORS.length
+                        const angleSpan = 90 // Total degrees the arc covers
+                        const startAngle = -angleSpan / 2
+                        const angleStep = angleSpan / Math.max(1, total - 1)
+                        const angle = startAngle + i * angleStep
+                        const radius = 106 // Distance from exact center
+
+                        // Rotate out from center, move by radius, then rotate back to keep dropshadows upright
+                        const transformStr = `rotate(${angle}deg) translateY(${radius}px) rotate(${-angle}deg)`
+                        
+                        return (
+                            <button
+                                key={c}
+                                onClick={() => onColorChange(event.id, c)}
+                                title={`Set color to ${c}`}
+                                aria-label={`Set color to ${c}`}
+                                className={`bubble-color-dot ${c === event.color ? 'is-active' : ''}`}
+                                style={{
+                                    backgroundColor: `var(--${c}-mid)`,
+                                    transform: transformStr,
+                                    '--arc-transform': transformStr,
+                                } as React.CSSProperties}
+                            />
+                        )
+                    })}
+                </div>
+            </div>
+        )
+    }
+
+    // ── Full content for non-orbit mode ───────────────────────────────────────
+    function renderFullContent() {
+        const duration = event.endH - event.startH
+        const durationLabel = duration >= 1 ? `${Number(duration.toFixed(2))}h` : `${Math.round(duration * 60)}m`
+        const today = new Date()
+        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' })
+        const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+
+        return (
+            <>
+                <div className="apple-menu-content">
+                    {/* Date row */}
+                    <div className="apple-menu-date-row">
+                        <div className="flex flex-col">
+                            <span className="apple-menu-day">{dayName}</span>
+                            <span className="apple-menu-date">{dateStr}</span>
+                        </div>
+                    </div>
+
+                    {/* Title */}
+                    <div className="apple-menu-title-row">
+                        <div
+                            className="apple-menu-indicator"
+                            style={{ backgroundColor: `var(--${event.color}-mid)` }}
+>>>>>>> Stashed changes
                         />
                     ) : (
                         <div

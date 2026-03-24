@@ -20,7 +20,12 @@ export function getZonedIsoDate(timeZone: string, offsetDays: number = 0): strin
   const d = new Date()
   d.setDate(d.getDate() + offsetDays)
   
-  if (timeZone === 'system') return d.toISOString().slice(0, 10)
+  if (timeZone === 'system') {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
 
   try {
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -260,6 +265,7 @@ export function defaultEventTimes(
 // ─── Formatting ──────────────────────────────────────────────────
 
 export function formatTime(hour: number, format: TimeFormat = '24h'): string {
+  if (hour < 0) return ''
   const h = Math.floor(hour) % 24
   const m = Math.round((hour - Math.floor(hour)) * 60)
 
@@ -284,6 +290,7 @@ export function formatMarker(hour: number, format: TimeFormat = '24h'): string {
 }
 
 export function formatCountdown(minutes: number): string {
+  if (minutes < 0) return 'Ended'
   if (minutes < 1) return '<1m'
   const h = Math.floor(minutes / 60)
   const m = Math.round(minutes % 60)
