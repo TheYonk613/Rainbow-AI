@@ -1,15 +1,11 @@
-<<<<<<< Updated upstream
-import { useCallback, useEffect, useState } from 'react'
-import { AnimatePresence } from 'framer-motion'
-=======
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
->>>>>>> Stashed changes
 import type { CalendarEvent, TimeFormat } from './types'
 import { type CompletedTask, type JourneyBeat } from './data/journeyMockData'
 import { useCurrentTime } from './hooks/useCurrentTime'
 import { defaultEventTimes, findGapAtTime } from './utils'
 import DayWheel from './components/DayWheel'
+import { WHEEL_CENTER } from './constants'
 import DateStrip from './components/DateStrip'
 import DeleteConfirm from './components/DeleteConfirm'
 import EventActionMenu from './components/EventActionMenu'
@@ -17,12 +13,10 @@ import EventCreator from './components/EventCreator'
 import EventEditor from './components/EventEditor'
 import Settings from './components/Settings'
 import TasksPage from './components/TasksPage'
-<<<<<<< Updated upstream
-=======
 import { JourneyPage } from './components/JourneyPage'
-import { JourneyIcon } from './components/JourneyIcon'
+import JourneyIcon from './components/JourneyIcon'
 import VoiceButton from './components/VoiceButton'
->>>>>>> Stashed changes
+import TetheredBubble from './components/TetheredBubble'
 
 const STORAGE_KEY = 'ra1nbow-settings'
 const POP_DURATION_MS = 550
@@ -59,7 +53,7 @@ function loadSettings(): PersistedSettings {
 }
 
 export default function App() {
-  const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon'>('orbit')
+  const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon' | 'journey'>('orbit')
   const [settings, setSettings] = useState<PersistedSettings>(loadSettings)
   const { currentTime, todayDate } = useCurrentTime(settings.timeZone)
   
@@ -70,11 +64,8 @@ export default function App() {
   const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([])
   const [beats, setBeats] = useState<JourneyBeat[]>([])
   const [showSettings, setShowSettings] = useState(false)
-<<<<<<< Updated upstream
-=======
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const currentTime = useCurrentTime(settings.timeZone)
->>>>>>> Stashed changes
+  const prevModeRef = useRef<'orbit' | 'rainbow' | 'balloon' | null>(null)
   const [creator, setCreator] = useState<{
     startH: number
     endH: number
@@ -362,13 +353,10 @@ export default function App() {
     }
   }, [mode])
 
-<<<<<<< Updated upstream
-=======
   const handleToggleJourney = useCallback(() => {
     if (mode === 'journey') {
       setMode(prevModeRef.current ?? 'orbit')
     } else {
-      prevModeRef.current = mode as 'orbit' | 'rainbow' | 'balloon'
       setMode('journey')
     }
   }, [mode])
@@ -376,8 +364,6 @@ export default function App() {
   const handleCloseJourney = useCallback(() => {
     setMode(prevModeRef.current ?? 'orbit')
   }, [])
-
->>>>>>> Stashed changes
   return (
     <div className={`min-h-screen transition-colors duration-500 flex flex-col ${settings.darkMode ? 'dark bg-[#121212]' : 'bg-[#f7f6f3]'} bg-noise`}>
       <header className="flex items-center justify-center pt-8 pb-2 relative z-20">
@@ -408,8 +394,6 @@ export default function App() {
             )}
           </div>
         </div>
-<<<<<<< Updated upstream
-=======
         {/* Journey icon — top right, glows at 7PM */}
         <div className="absolute right-6 top-8 z-30">
           <JourneyIcon
@@ -417,7 +401,6 @@ export default function App() {
             isActive={mode === 'journey'}
           />
         </div>
->>>>>>> Stashed changes
       </header>
 
       {/* Views Container */}
@@ -476,15 +459,12 @@ export default function App() {
                 selectedDate={selectedDate}
                 todayDate={todayDate}
                 timeFormat={settings.timeFormat}
-<<<<<<< Updated upstream
                 markerResolution={settings.markerResolution}
-=======
                 dateLabel={new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric',
                 })}
->>>>>>> Stashed changes
                 selectedEventId={actionTarget?.event.id}
                 onGapClick={handleGapClick}
                 onEventClick={handleEventClick}
@@ -517,9 +497,6 @@ export default function App() {
         >
           <TasksPage />
         </div>
-<<<<<<< Updated upstream
-=======
-
         {/* Journey View */}
         <AnimatePresence>
           {mode === 'journey' && (
@@ -533,7 +510,6 @@ export default function App() {
             </div>
           )}
         </AnimatePresence>
->>>>>>> Stashed changes
       </div>
 
       {/* Bottom Navigation Dock */}
@@ -612,31 +588,14 @@ export default function App() {
         />
       )}
 
-<<<<<<< Updated upstream
-      {actionTarget && (
-        <EventActionMenu
-          event={actionTarget.event}
-          anchorX={actionTarget.anchorX}
-          anchorY={actionTarget.anchorY}
-          onColorChange={handleColorChange}
-          onTitleChange={handleRenameEvent}
-          onNotesChange={handleUpdateNotes}
-          onTimeChange={handleTimeChange}
-          onEdit={handleEditEvent}
-          onToggleImpassable={handleToggleImpassable}
-          onDelete={handleDeleteEvent}
-          onClose={handleCloseActionMenu}
-        />
-      )}
-=======
       <AnimatePresence>
         {actionTarget && mode === 'orbit' ? (
           <TetheredBubble
             key={actionTarget.event.id}
             anchorX={actionTarget.anchorX}
             anchorY={actionTarget.anchorY}
-            centerX={actionTarget.centerX}
-            centerY={actionTarget.centerY}
+            centerX={WHEEL_CENTER}
+            centerY={WHEEL_CENTER}
             color={actionTarget.event.color}
             onClickOutside={handleCloseActionMenu}
           >
@@ -674,7 +633,6 @@ export default function App() {
           />
         ) : null}
       </AnimatePresence>
->>>>>>> Stashed changes
 
       {editTarget && (
         <EventEditor

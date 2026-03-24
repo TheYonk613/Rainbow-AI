@@ -318,8 +318,6 @@ body {
   }
 }
 
-<<<<<<< Updated upstream
-=======
 /* ─── Tethered Bubble: SVG tether overlay ─── */
 
 .tether-svg {
@@ -789,7 +787,7 @@ body {
   50% { opacity: 1; }
 }
 
->>>>>>> Stashed changes
+
 /* ─── Apple-style calendar menu ─── */
 
 .apple-calendar-menu {

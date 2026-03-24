@@ -36,11 +36,8 @@ interface DayWheelProps {
   todayDate: string
   selectedDate: string
   timeFormat: TimeFormat
-<<<<<<< Updated upstream
   markerResolution?: 'minimal' | 'standard' | 'chronograph' | 'technical'
-=======
   dateLabel?: string
->>>>>>> Stashed changes
   selectedEventId?: string
   onGapClick: (hour: number, clientX: number, clientY: number) => void
   onEventClick: (event: CalendarEvent, clientX: number, clientY: number) => void
@@ -92,11 +89,8 @@ export default function DayWheel({
   todayDate,
   selectedDate,
   timeFormat,
-<<<<<<< Updated upstream
   markerResolution = 'standard',
-=======
   dateLabel,
->>>>>>> Stashed changes
   selectedEventId,
   onGapClick,
   onEventClick,
@@ -717,17 +711,11 @@ export default function DayWheel({
       })}
 
       {/* ─── Now indicator ─── */}
-<<<<<<< Updated upstream
       <CurrentTimeIndicator 
         currentTime={currentTime} 
         angleOffset={angleOffset} 
         visible={selectedDate === todayDate}
       />
-=======
-      {currentTime >= 0 && (
-        <CurrentTimeIndicator currentTime={currentTime} angleOffset={angleOffset} />
-      )}
->>>>>>> Stashed changes
 
       {/* ─── Hover preview (gap click) ─── */}
       {!isInteracting && !hoveredEdge && hoverPos && hoverInGap && (
@@ -757,34 +745,30 @@ export default function DayWheel({
           </text>
         </g>
       )}
-<<<<<<< Updated upstream
       {/* ─── Digital Clock Hub ─── */}
       <DigitalClock 
         currentTime={currentTime} 
         timeFormat={timeFormat}
         isLive={selectedDate === todayDate}
+        dateLabel={dateLabel}
         onReset={onResetView}
       />
-=======
-
-      {/* ─── Digital Clock Hub ─── */}
-      <DigitalClock currentTime={currentTime} timeFormat={timeFormat} dateLabel={dateLabel} />
->>>>>>> Stashed changes
 
     </svg>
   )
 }
 
-<<<<<<< Updated upstream
 function DigitalClock({ 
   currentTime, 
   timeFormat, 
   isLive, 
+  dateLabel,
   onReset 
 }: { 
   currentTime: number
   timeFormat: TimeFormat
   isLive: boolean
+  dateLabel?: string
   onReset: () => void
 }) {
   const h = Math.floor(currentTime)
@@ -792,13 +776,10 @@ function DigitalClock({
   const displayH = timeFormat === '12h' ? (h % 12 || 12) : h
   const timeStr = `${displayH}:${m.toString().padStart(2, '0')}`
 
-  // Format a nice human readable date for the bottom context
-
-
   return (
     <motion.g
       initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: isLive ? 1 : 0.6, scale: 1 }}
+      animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
       style={{ cursor: isLive ? 'default' : 'pointer' }}
       onClick={(e) => {
@@ -825,130 +806,74 @@ function DigitalClock({
         </filter>
       </defs>
 
-      {/* Hero Time */}
-      <text
-        x={WHEEL_CENTER}
-        y={WHEEL_CENTER - 2}
-        textAnchor="middle"
-        dominantBaseline="central"
-        className="fill-black dark:fill-white select-none pointer-events-none transition-colors duration-500"
-        style={{
-          fontSize: '44px',
-          fontWeight: '700',
-          fontFamily: 'Outfit, sans-serif',
-          fontVariantNumeric: 'tabular-nums',
-          letterSpacing: '-0.02em',
-          filter: isLive ? 'url(#text-glow)' : 'none',
-        }}
-      >
-        {timeStr}
-      </text>
-
-
+      {isLive ? (
+        <text
+          x={WHEEL_CENTER}
+          y={WHEEL_CENTER - 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="fill-black dark:fill-white select-none pointer-events-none transition-colors duration-500"
+          style={{
+            fontSize: '44px',
+            fontWeight: '700',
+            fontFamily: 'Outfit, sans-serif',
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '-0.02em',
+            filter: 'url(#hero-glow-dark)',
+          }}
+        >
+          {timeStr}
+        </text>
+      ) : dateLabel ? (
+        <g className="pointer-events-none">
+          <text
+            x={WHEEL_CENTER}
+            y={WHEEL_CENTER - 16}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="rgba(0,0,0,0.3)"
+            fontSize="14"
+            fontWeight="700"
+            fontFamily="Outfit, sans-serif"
+            className="dark:fill-white/30 tracking-[0.2em] uppercase"
+          >
+            {dateLabel.split(', ')[0]}
+          </text>
+          <text
+            x={WHEEL_CENTER}
+            y={WHEEL_CENTER + 16}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="rgba(0,0,0,0.6)"
+            fontSize="24"
+            fontWeight="bold"
+            fontFamily="Outfit, sans-serif"
+            className="dark:fill-white/60 tracking-tight"
+          >
+            {dateLabel.split(', ').slice(1).join(', ')}
+          </text>
+        </g>
+      ) : null}
 
       {/* Subtle Seconds Pulse Ring (purely decorative) */}
-      <motion.circle
-        cx={WHEEL_CENTER}
-        cy={WHEEL_CENTER}
-        r={66}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeDasharray="4 200"
-        strokeLinecap="round"
-        className="text-gray-900/10 dark:text-white/10 pointer-events-none"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-      />
+      {isLive && (
+        <motion.circle
+          cx={WHEEL_CENTER}
+          cy={WHEEL_CENTER}
+          r={66}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeDasharray="4 200"
+          strokeLinecap="round"
+          className="text-gray-900/10 dark:text-white/10 pointer-events-none"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+        />
+      )}
     </motion.g>
   )
 }
-
-
-=======
-// ─── Digital Clock ──────────────────────────────────────────────
-
-function DigitalClock({ currentTime, timeFormat, dateLabel }: { currentTime: number; timeFormat: TimeFormat; dateLabel?: string }) {
-  // Format the time as HH:MM AM/PM or 24h
-  const displayTime = currentTime >= 0 ? formatTime(currentTime, timeFormat) : ''
-  // Split the AM/PM part if present
-  const [timeStr, ampmStr] = displayTime.split(' ')
-
-  if (currentTime < 0) {
-    if (!dateLabel) return null;
-    
-    // Split date label into two lines: e.g. "Tuesday" and "March 24"
-    const [dayName, ...rest] = dateLabel.split(', '); 
-    const dateRest = rest.join(', ');
-
-    return (
-      <g className="pointer-events-none">
-        <text
-          x={WHEEL_CENTER}
-          y={WHEEL_CENTER - 16}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="rgba(0,0,0,0.3)"
-          fontSize="14"
-          fontWeight="700"
-          fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
-          className="dark:fill-white/30 tracking-[0.2em] uppercase"
-        >
-          {dayName}
-        </text>
-        <text
-          x={WHEEL_CENTER}
-          y={WHEEL_CENTER + 16}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="rgba(0,0,0,0.6)"
-          fontSize="24"
-          fontWeight="bold"
-          fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
-          className="dark:fill-white/60 tracking-tight"
-        >
-          {dateRest}
-        </text>
-      </g>
-    )
-  }
-
-  return (
-    <g className="pointer-events-none">
-      <text
-        x={WHEEL_CENTER}
-        y={WHEEL_CENTER + (ampmStr ? -4 : 0)}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill="rgba(0,0,0,0.85)"
-        fontSize="56"
-        fontWeight="bold"
-        fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        letterSpacing="-0.02em"
-        className="dark:fill-white/90 drop-shadow-sm transition-colors duration-500"
-      >
-        {timeStr}
-      </text>
-      {ampmStr && (
-        <text
-          x={WHEEL_CENTER}
-          y={WHEEL_CENTER + 32}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="rgba(0,0,0,0.5)"
-          fontSize="16"
-          fontWeight="600"
-          fontFamily="monospace"
-          className="dark:fill-white/50"
-        >
-          {ampmStr}
-        </text>
-      )}
-    </g>
-  )
-}
-
->>>>>>> Stashed changes
 // ─── Time pill ──────────────────────────────────────────────────
 
 function TimePill({ hour, angle, fmt }: { hour: number; angle: number; fmt: TimeFormat }) {
