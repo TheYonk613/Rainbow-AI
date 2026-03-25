@@ -5,7 +5,6 @@ import { type CompletedTask, type JourneyBeat } from './data/journeyMockData'
 import { useCurrentTime } from './hooks/useCurrentTime'
 import { defaultEventTimes, findGapAtTime } from './utils'
 import DayWheel from './components/DayWheel'
-import { WHEEL_CENTER } from './constants'
 import DateStrip from './components/DateStrip'
 import DeleteConfirm from './components/DeleteConfirm'
 import EventActionMenu from './components/EventActionMenu'
@@ -54,6 +53,8 @@ function loadSettings(): PersistedSettings {
 
 export default function App() {
   const [mode, setMode] = useState<'orbit' | 'rainbow' | 'balloon' | 'journey'>('orbit')
+  const wheelRef = useRef<HTMLDivElement>(null)
+  
   const [settings, setSettings] = useState<PersistedSettings>(loadSettings)
   const { currentTime, todayDate } = useCurrentTime(settings.timeZone)
   
@@ -119,6 +120,8 @@ export default function App() {
     event: CalendarEvent
     anchorX: number
     anchorY: number
+    centerX: number
+    centerY: number
   } | null>(null)
   const [lastMenuPos, setLastMenuPos] = useState<{ x: number, y: number } | null>(null)
   const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null)
@@ -195,10 +198,24 @@ export default function App() {
 
   const handleCancelCreate = useCallback(() => setCreator(null), [])
 
-  const handleEventClick = useCallback((event: CalendarEvent, clientX: number, clientY: number) => {
-    if (mode !== 'orbit') return
-    setActionTarget({ event, anchorX: clientX, anchorY: clientY })
-  }, [mode])
+  const handleEventClick = useCallback(
+    (event: CalendarEvent, clientX: number, clientY: number) => {
+      if (mode !== 'orbit') return
+      // Find the center of the wheel container in the viewport
+      const wheelRect = wheelRef.current?.getBoundingClientRect()
+      const centerX = wheelRect ? wheelRect.left + wheelRect.width / 2 : window.innerWidth / 2
+      const centerY = wheelRect ? wheelRect.top + wheelRect.height / 2 : window.innerHeight / 2
+
+      setActionTarget({
+        event,
+        anchorX: clientX,
+        anchorY: clientY,
+        centerX,
+        centerY,
+      })
+    },
+    [mode]
+  )
 
   const handleConfirmDelete = useCallback(() => {
     if (!deleteTarget) return
@@ -325,7 +342,11 @@ export default function App() {
 
   const handleCancelDelete = useCallback(() => {
     if (deleteTarget && lastMenuPos) {
-      setActionTarget({ event: deleteTarget, anchorX: lastMenuPos.x, anchorY: lastMenuPos.y })
+      // We need to re-calculate centerX and centerY if we restore the action target
+      const wheelRect = wheelRef.current?.getBoundingClientRect()
+      const centerX = wheelRect ? wheelRect.left + wheelRect.width / 2 : window.innerWidth / 2
+      const centerY = wheelRect ? wheelRect.top + wheelRect.height / 2 : window.innerHeight / 2
+      setActionTarget({ event: deleteTarget, anchorX: lastMenuPos.x, anchorY: lastMenuPos.y, centerX, centerY })
     }
     setDeleteTarget(null)
   }, [deleteTarget, lastMenuPos])
@@ -452,7 +473,7 @@ export default function App() {
             </div>
 
             {/* Top Area: DayWheel Ring */}
-            <div className="w-full max-w-[560px] flex flex-col items-center mb-2 relative group">
+            <div className="w-full max-w-[560px] flex flex-col items-center mb-2 relative group" ref={wheelRef}>
               <DayWheel
                 events={events.filter((e) => e.date === selectedDate)}
                 currentTime={currentTime}
@@ -594,8 +615,8 @@ export default function App() {
             key={actionTarget.event.id}
             anchorX={actionTarget.anchorX}
             anchorY={actionTarget.anchorY}
-            centerX={WHEEL_CENTER}
-            centerY={WHEEL_CENTER}
+            centerX={actionTarget.centerX!}
+            centerY={actionTarget.centerY!}
             color={actionTarget.event.color}
             onClickOutside={handleCloseActionMenu}
           >

@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion'
-import { ReactNode, useEffect, useState } from 'react'
+import { ReactNode } from 'react'
 
 interface TetheredBubbleProps {
   anchorX: number
   anchorY: number
+  centerX: number
+  centerY: number
   color: string
   children: ReactNode
   onClickOutside: () => void
@@ -12,29 +14,32 @@ interface TetheredBubbleProps {
 export default function TetheredBubble({
   anchorX,
   anchorY,
+  centerX,
+  centerY,
   color,
   children,
   onClickOutside,
 }: TetheredBubbleProps) {
-  // Use absolute fixed position for the bubble center
-  const [windowPos, setWindowPos] = useState({ x: 0, y: 0 })
-
-  useEffect(() => {
-    // We want the bubble to be centered in the viewport or at some relation to the anchor
-    // For now, let's center it near the wheel
-    setWindowPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
-  }, [])
+  // Use the passed center coordinates for exact alignment
+  const windowPos = { x: centerX, y: centerY }
 
   return (
     <div className="fixed inset-0 z-[100] pointer-events-none">
-      <div className="absolute inset-0 bg-black/10 dark:bg-black/40 backdrop-blur-sm pointer-events-auto" onClick={onClickOutside} />
+      <motion.div 
+        className="absolute inset-0 bg-black/10 dark:bg-black/40 backdrop-blur-sm pointer-events-auto" 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClickOutside} 
+      />
       
       {/* SVG Tether Line */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
         <motion.line
           initial={{ pathLength: 0, opacity: 0 }}
           animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 0.6, ease: "anticipate" }}
+          exit={{ pathLength: 0, opacity: 0 }}
+          transition={{ duration: 0.45, ease: "anticipate" }}
           x1={anchorX}
           y1={anchorY}
           x2={windowPos.x}
@@ -45,9 +50,10 @@ export default function TetheredBubble({
           strokeDasharray="5 10"
         />
         <motion.circle
-          initial={{ r: 0 }}
-          animate={{ r: 6 }}
-          transition={{ delay: 0.3 }}
+          initial={{ r: 0, opacity: 0 }}
+          animate={{ r: 6, opacity: 1 }}
+          exit={{ r: 0, opacity: 0 }}
+          transition={{ delay: 0.1 }}
           cx={anchorX}
           cy={anchorY}
           fill={color.startsWith('g') ? `var(--${color}-mid)` : color}
