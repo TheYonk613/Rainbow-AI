@@ -61,33 +61,19 @@ export default function EventCreator({
 
   const timeOptions = Array.from({ length: 48 }, (_, i) => i * 0.5)
 
-  return (
-    <div className="bubble-orbit-layout w-full h-full flex flex-col pt-8 pb-4 relative z-10" onClick={(e) => e.stopPropagation()}>
-      
-      {/* 1) Top: Time Range */}
-      <div className="flex justify-center items-center w-full mt-2 gap-2 text-white/80">
-        <select
-          value={localStartH}
-          onChange={(e) => setLocalStartH(Number(e.target.value))}
-          className="bg-transparent text-sm appearance-none outline-none cursor-pointer hover:text-white transition-colors"
-          style={{ textAlignLast: 'center' }}
-        >
-          {timeOptions.map((t) => (
-            <option key={t} value={t} className="text-black">{formatTime(t, timeFormat)}</option>
-          ))}
-        </select>
-        <span className="opacity-50">—</span>
-        <select
-          value={localEndH}
-          onChange={(e) => setLocalEndH(Number(e.target.value))}
-          className="bg-transparent text-sm appearance-none outline-none cursor-pointer hover:text-white transition-colors"
-          style={{ textAlignLast: 'center' }}
-        >
-          {timeOptions.map((t) => (
-            <option key={t} value={t} className="text-black">{formatTime(t, timeFormat)}</option>
-          ))}
-        </select>
-      </div>
+          {/* Title input */}
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="What's happening?"
+            value={title}
+            onChange={(e) => {
+              const val = e.target.value
+              setTitle(val.length === 1 ? val.toUpperCase() : val)
+            }}
+            onKeyDown={handleKeyDown}
+            className="w-full text-lg font-semibold text-gray-800 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent border-none outline-none"
+          />
 
       {/* 2) Middle: Title Input & Create Button */}
       <div className="flex-1 flex flex-col justify-center items-center px-6 w-full gap-4 mt-2">

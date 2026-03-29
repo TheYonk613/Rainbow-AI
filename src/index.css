@@ -34,9 +34,9 @@
   --g7-solar-start: #ffe93d; --g7-solar-mid: #aaff00; --g7-solar-end: #39ff14;
   --g7-solar-glow1: rgba(255, 233, 61, 0.2); --g7-solar-glow2: rgba(57, 255, 20, 0.1);
 
-  /* g8: Chrome Rose */
-  --g8-chrome-start: #cfd8dc; --g8-chrome-mid: #ff69b4; --g8-chrome-end: #ff2dff;
   --g8-chrome-glow1: rgba(255, 105, 180, 0.2); --g8-chrome-glow2: rgba(255, 45, 255, 0.1);
+  
+  --clock-filter: url(#hero-glow-black);
 }
 
 body {
@@ -339,8 +339,7 @@ body {
   backdrop-filter: blur(24px) saturate(180%);
   /* border is set dynamically in TetheredBubble via inline style with event color */
   box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(0, 0, 0, 0.04);
+    0 20px 60px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   color: white;
@@ -392,19 +391,20 @@ body {
 .bubble-orbit-layout {
   position: absolute;
   inset: 0;
-  padding: 24px 20px;
+  padding: 40px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
 }
 
 /* Preview Top Section: Title and Time */
 .preview-title-display {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   max-width: 90%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -419,7 +419,7 @@ body {
 }
 
 .preview-time-display {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   color: rgba(0, 0, 0, 0.6);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   text-align: center;
@@ -499,6 +499,62 @@ body {
   background: rgba(255, 60, 60, 0.2);
   color: #ff5c5c;
   border-color: rgba(255, 60, 60, 0.3);
+}
+
+.preview-action-btn.complete:hover {
+  background: rgba(52, 199, 89, 0.1);
+  color: #34c759;
+  border-color: rgba(52, 199, 89, 0.2);
+}
+
+.dark .preview-action-btn.complete:hover {
+  background: rgba(48, 209, 88, 0.2);
+  color: #30d158;
+  border-color: rgba(48, 209, 88, 0.3);
+}
+
+/* ─── Orbit Bubble: Curved Color Arc ─── */
+.bubble-color-arc {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.bubble-color-dot {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.bubble-color-dot:hover {
+  transform: var(--arc-transform) scale(1.25) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.bubble-color-dot.is-active {
+  box-shadow:
+    0 0 0 2.5px white,
+    0 0 0 4px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.dark .bubble-color-dot.is-active {
+  box-shadow:
+    0 0 0 2.5px rgba(255, 255, 255, 0.9),
+    0 0 0 4px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* Title */
@@ -727,6 +783,7 @@ body {
   0%, 100% { opacity: 0.75; }
   50% { opacity: 1; }
 }
+
 
 /* ─── Apple-style calendar menu ─── */
 
@@ -1086,6 +1143,7 @@ body {
   --g6-uv-glow1: rgba(204, 0, 255, 0.55); --g6-uv-glow2: rgba(0, 153, 255, 0.3);
   --g7-solar-glow1: rgba(255, 233, 61, 0.5); --g7-solar-glow2: rgba(57, 255, 20, 0.3);
   --g8-chrome-glow1: rgba(255, 105, 180, 0.5); --g8-chrome-glow2: rgba(255, 45, 255, 0.35);
+  --clock-filter: url(#hero-glow-dark);
 }
 
 .dark .apple-calendar-menu {
@@ -1399,20 +1457,25 @@ body {
   stroke: rgba(255, 255, 255, 0.06);
 }
 
+/* ─── Hour markers ─── */
 .hour-marker {
-  fill: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.22);
+  fill: rgba(0, 0, 0, 0.22);
 }
 
 .dark .hour-marker {
-  fill: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.22);
+  fill: rgba(255, 255, 255, 0.22);
 }
 
 .hour-marker-major {
-  fill: rgba(0, 0, 0, 0.28);
+  color: rgba(0, 0, 0, 0.45);
+  fill: rgba(0, 0, 0, 0.45);
 }
 
 .dark .hour-marker-major {
-  fill: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.5);
+  fill: rgba(255, 255, 255, 0.5);
 }
 
 /* ─── Global Dark Mode transitions ─── */

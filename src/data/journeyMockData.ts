@@ -2,8 +2,8 @@
 // All data for the Journey daily recap page lives here.
 // Never hardcode beat content inside JourneyPage.tsx — add it here instead.
 
-export type BeatType = 'call' | 'message' | 'place' | 'task' | 'unresolved'
-export type PillColor = 'orange' | 'purple' | 'gold' | 'sage'
+export type BeatType = 'call' | 'message' | 'place' | 'task' | 'unresolved' | 'deleted'
+export type PillColor = 'orange' | 'purple' | 'gold' | 'sage' | 'red' | 'grey'
 
 export interface JourneyBeat {
     id: string

@@ -1,54 +1,76 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { getZonedIsoDate } from '../utils'
 
 /**
- * Returns the current time as a float hour (e.g. 14.5 = 2:30 PM) for the specified timezone.
- * 'system' means the user's local timezone.
- * Updates every minute.
+ * The "Heartbeat Service" for the entire application.
+ * Returns both the current fractional hour and the current ISO date for the selected timezone.
+ * Handles precision minute-syncing and visibility-change re-syncs (sleep/wake recovery).
  */
-export function useCurrentTime(timeZone: string = 'system'): number {
-  const getTimeFloat = () => {
+export function useCurrentTime(timeZone: string = 'system') {
+  const getSnapshot = () => {
     const now = new Date()
-    if (timeZone === 'system') {
-      return now.getHours() + now.getMinutes() / 60
-    }
+    const todayDate = getZonedIsoDate(timeZone)
+    
+    let currentTime = now.getHours() + now.getMinutes() / 60
+    
+    if (timeZone !== 'system') {
+      try {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone,
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: false
+        }).formatToParts(now)
 
-    try {
-      const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone,
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: false
-      }).formatToParts(now)
-
-      let h = 0
-      let m = 0
-      for (const part of parts) {
-        if (part.type === 'hour') {
-          h = parseInt(part.value, 10)
-          if (h === 24) h = 0 // Some runtimes map midnight to 24 when hour12: false
+        let h = 0
+        let m = 0
+        for (const part of parts) {
+          if (part.type === 'hour') {
+            h = parseInt(part.value, 10)
+            if (h === 24) h = 0
+          }
+          if (part.type === 'minute') {
+            m = parseInt(part.value, 10)
+          }
         }
-        if (part.type === 'minute') {
-          m = parseInt(part.value, 10)
-        }
+        currentTime = h + m / 60
+      } catch {
+        // Fallback
       }
-      return h + m / 60
-    } catch {
-      // Fallback if timezone is invalid
-      return now.getHours() + now.getMinutes() / 60
     }
+    
+    return { currentTime, todayDate }
   }
 
-  const [time, setTime] = useState(getTimeFloat)
+  const [state, setState] = useState(getSnapshot)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const sync = () => {
+    const next = getSnapshot()
+    setState(next)
+    
+    // Precision sync: schedule next update exactly at the start of the next minute
+    const now = new Date()
+    const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 100 // +100ms buffer
+    
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(sync, msUntilNextMinute)
+  }
 
   useEffect(() => {
-    // Re-evaluate immediately when timezone changes
-    setTime(getTimeFloat())
-    const interval = setInterval(() => {
-      setTime(getTimeFloat())
-    }, 60_000) // update every minute
+    sync()
 
-    return () => clearInterval(interval)
+    // Resync immediately when the page becomes visible (wake from sleep)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') sync()
+    }
+
+    window.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      window.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [timeZone])
 
-  return time
+  return state
 }

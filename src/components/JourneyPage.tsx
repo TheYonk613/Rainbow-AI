@@ -2,11 +2,10 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     TONIGHT_STORY,
-    COMPLETED_TASKS,
-    JOURNEY_BEATS,
     QUIET_DAY_STORY,
     type JourneyBeat,
     type PillColor,
+    type CompletedTask,
 } from '../data/journeyMockData'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -18,6 +17,7 @@ const BEAT_COLORS: Record<string, string> = {
     place: 'rgba(139, 184, 154, 0.85)',     // sage
     task: 'rgba(230, 185, 100, 0.85)',      // amber
     unresolved: 'rgba(251, 146, 60, 0.85)', // orange
+    deleted: 'rgba(239, 68, 68, 0.85)',      // red
 }
 
 const BEAT_GLOW: Record<string, string> = {
@@ -26,6 +26,7 @@ const BEAT_GLOW: Record<string, string> = {
     place: 'rgba(139, 184, 154, 0.3)',
     task: 'rgba(230, 185, 100, 0.3)',
     unresolved: 'rgba(251, 146, 60, 0.3)',
+    deleted: 'rgba(239, 68, 68, 0.3)',
 }
 
 const PILL_STYLES: Record<PillColor, { bg: string; text: string }> = {
@@ -33,6 +34,8 @@ const PILL_STYLES: Record<PillColor, { bg: string; text: string }> = {
     purple: { bg: 'rgba(163,166,230,0.18)', text: '#a3a6e6' },
     gold: { bg: 'rgba(230,185,100,0.18)', text: '#e6b964' },
     sage: { bg: 'rgba(139,184,154,0.18)', text: '#8bb89a' },
+    red: { bg: 'rgba(239,68,68,0.18)', text: '#ef4444' },
+    grey: { bg: 'rgba(255,255,255,0.08)', text: '#a0a8c0' },
 }
 
 // Beat type SVG icons (inline, lightweight)
@@ -67,12 +70,21 @@ function BeatIcon({ type }: { type: string }) {
             </svg>
         )
     }
+    if (type === 'deleted') {
+        return (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+        )
+    }
     return null
 }
 
 // ─── Beat Card ─────────────────────────────────────────────────────────────────
 
-function BeatCard({ beat, index }: { beat: JourneyBeat; index: number }) {
+function BeatCard({ beat, index, onRestore }: { beat: JourneyBeat; index: number; onRestore?: (id: string) => void }) {
     const isUnresolved = beat.type === 'unresolved'
     const iconBg = BEAT_COLORS[beat.type]
     const iconGlow = BEAT_GLOW[beat.type]
@@ -163,6 +175,23 @@ function BeatCard({ beat, index }: { beat: JourneyBeat; index: number }) {
                             </span>
                         )}
 
+                        {onRestore && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const realId = beat.id.replace('beat_', '');
+                                    onRestore(realId);
+                                }}
+                                className="group/undo flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/5 hover:border-white/15 bg-white/5 hover:bg-white/10 transition-all active:scale-95"
+                            >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover/undo:stroke-white/70 transition-colors">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                    <path d="M3 3v5h5" />
+                                </svg>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-white/30 group-hover/undo:text-white/60 transition-colors">Undo</span>
+                            </button>
+                        )}
+
                         {beat.ctaLabel && (
                             <motion.button
                                 whileHover={{ scale: 1.04 }}
@@ -194,11 +223,13 @@ function BeatCard({ beat, index }: { beat: JourneyBeat; index: number }) {
 
 interface JourneyPageProps {
     onBack: () => void
+    completedTasks?: CompletedTask[]
+    beats?: JourneyBeat[]
+    onRestore?: (id: string) => void
 }
 
-export const JourneyPage = ({ onBack }: JourneyPageProps) => {
+export const JourneyPage = ({ onBack, completedTasks = [], beats = [], onRestore }: JourneyPageProps) => {
     const [expandedTask, setExpandedTask] = useState<string | null>(null)
-    const beats = JOURNEY_BEATS
     const hasBeats = beats.length > 0
 
     // Format today's date
@@ -320,10 +351,10 @@ export const JourneyPage = ({ onBack }: JourneyPageProps) => {
                         className="mb-3"
                         style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(160,168,192,0.4)' }}
                     >
-                        Today you completed {COMPLETED_TASKS.length} things
+                        Today you completed {completedTasks.length} things
                     </p>
                     <div className="flex flex-wrap gap-2">
-                        {COMPLETED_TASKS.map((task) => (
+                        {completedTasks.map((task) => (
                             <motion.button
                                 key={task.id}
                                 whileHover={{ scale: 1.05, y: -1 }}
@@ -395,7 +426,7 @@ export const JourneyPage = ({ onBack }: JourneyPageProps) => {
                 {hasBeats ? (
                     <div className="flex flex-col gap-3">
                         {beats.map((beat, i) => (
-                            <BeatCard key={beat.id} beat={beat} index={i} />
+                            <BeatCard key={beat.id} beat={beat} index={i} onRestore={onRestore} />
                         ))}
                     </div>
                 ) : (

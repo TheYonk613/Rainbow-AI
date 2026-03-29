@@ -51,7 +51,10 @@ export default function TaskCreatorModal({ onDone, onCancel }: TaskCreatorModalP
                     ref={inputRef}
                     type="text"
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
+                    onChange={(e) => {
+                        const val = e.target.value
+                        setText(val.length === 1 ? val.toUpperCase() : val)
+                    }}
                     onKeyDown={handleKeyDown}
                     placeholder="What needs doing?"
                     disabled={saving}
