@@ -87,7 +87,10 @@ export default function TaskEditModal({ task, onSave, onComplete, onCancel, orig
                 <input
                     ref={titleRef}
                     value={title}
-                    onChange={e => setTitle(e.target.value)}
+                    onChange={e => {
+                        const val = e.target.value
+                        setTitle(val.length === 1 ? val.toUpperCase() : val)
+                    }}
                     onKeyDown={e => e.key === 'Enter' && handleSave()}
                     className="w-full text-2xl font-bold bg-transparent border-none outline-none text-gray-800 placeholder-gray-300 mt-3"
                     placeholder="Task name…"
@@ -111,7 +114,10 @@ export default function TaskEditModal({ task, onSave, onComplete, onCancel, orig
                             <span className="text-gray-300 flex-shrink-0">·</span>
                             <input
                                 value={sub}
-                                onChange={e => updateSubtask(i, e.target.value)}
+                                onChange={e => {
+                                    const val = e.target.value
+                                    updateSubtask(i, val.length === 1 ? val.toUpperCase() : val)
+                                }}
                                 onKeyDown={e => {
                                     if (e.key === 'Enter') addSubtask()
                                     if (e.key === 'Backspace' && sub === '') removeSubtask(i)

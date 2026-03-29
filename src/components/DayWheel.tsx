@@ -33,11 +33,16 @@ const DRAG_THRESHOLD = 6
 interface DayWheelProps {
   events: CalendarEvent[]
   currentTime: number
+  todayDate: string
+  selectedDate: string
   timeFormat: TimeFormat
+  markerResolution?: 'minimal' | 'standard' | 'chronograph' | 'technical'
+  dateLabel?: string
   selectedEventId?: string
   onGapClick: (hour: number, clientX: number, clientY: number) => void
   onEventClick: (event: CalendarEvent, clientX: number, clientY: number, centerX?: number, centerY?: number) => void
   onEventTimeChange: (id: string, startH: number, endH: number) => void
+  onResetView: () => void
 }
 
 interface EdgeRef {
@@ -81,11 +86,16 @@ function findNearestEdge(
 export default function DayWheel({
   events,
   currentTime,
+  todayDate,
+  selectedDate,
   timeFormat,
+  markerResolution = 'standard',
+  dateLabel,
   selectedEventId,
   onGapClick,
   onEventClick,
   onEventTimeChange,
+  onResetView,
 }: DayWheelProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoverHour, setHoverHour] = useState<number | null>(null)
@@ -110,24 +120,53 @@ export default function DayWheel({
   const isInteracting = (drag?.hasMoved || resize?.hasMoved) ?? false
 
 
-  // ─── Hour markers (every 3 hours = 8 markers) ────────────────
-
-  const markers = useMemo(() => {
-    const result = []
-    for (let h = 0; h < TOTAL_HOURS; h += 3) {
+  // ─── Hour markers (Dynamic Resolution) ────────────────────────
+  
+  const markerConfig = useMemo(() => {
+    const res = markerResolution
+    const dots: { h: number; x: number; y: number; type: 'text' | 'tick' | 'subtick'; isMajor: boolean }[] = []
+    
+    // Sampling rules
+    const step = res === 'technical' ? 0.5 : (res === 'minimal' ? 6 : 1)
+    
+    for (let h = 0; h < TOTAL_HOURS; h += step) {
       const angle = hourToAngle(h, angleOffset)
       const rad = degToRad(angle)
-      const labelR = RING_RADIUS + RING_THICKNESS / 2 + 22
-      const isMajor = h % 6 === 0 // 0, 6, 12, 18 are major
-      result.push({
+      const isCardinal = h % 6 === 0
+      const isThreeH = h % 3 === 0
+      const isInteger = h % 1 === 0
+
+      let type: 'text' | 'tick' | 'subtick' = 'tick'
+      let radiusOffset = 22
+
+      if (res === 'minimal') {
+        if (isCardinal) type = 'text'
+        else continue
+      } else if (res === 'standard') {
+        if (isThreeH) type = 'text'
+        else continue
+      } else if (res === 'chronograph') {
+        if (isThreeH) type = 'text'
+        else type = 'tick'
+      } else if (res === 'technical') {
+        if (isInteger) type = 'text'
+        else type = 'subtick'
+      }
+
+      if (type !== 'text') radiusOffset = 10
+
+      const labelR = RING_RADIUS + RING_THICKNESS / 2 + radiusOffset
+      
+      dots.push({
         h,
         x: WHEEL_CENTER + labelR * Math.cos(rad),
         y: WHEEL_CENTER + labelR * Math.sin(rad),
-        isMajor,
+        type,
+        isMajor: isCardinal,
       })
     }
-    return result
-  }, [angleOffset, timeFormat])
+    return dots
+  }, [markerResolution, angleOffset])
 
   // ─── Boundary handles ─────────────────────────────────────────
 
@@ -636,24 +675,53 @@ export default function DayWheel({
       })}
 
       {/* ─── Hour markers ─── */}
-      {markers.map(({ h, x, y, isMajor }) => (
-        <text
-          key={h}
-          x={x}
-          y={y}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontSize={isMajor ? '11' : '9'}
-          fontFamily="monospace"
-          fontWeight={isMajor ? '500' : '400'}
-          className={`pointer-events-none select-none transition-colors duration-500 ${isMajor ? 'hour-marker-major' : 'hour-marker'}`}
-        >
-          {formatMarker(h, timeFormat)}
-        </text>
-      ))}
+      {markerConfig.map(({ h, x, y, type, isMajor }) => {
+        if (type === 'text') {
+          return (
+            <text
+              key={`text-${h}`}
+              x={x}
+              y={y}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={isMajor ? '12' : '10'}
+              fontFamily="Outfit, system-ui, sans-serif"
+              fontWeight={isMajor ? '700' : '500'}
+              className={`pointer-events-none select-none transition-colors duration-500 ${
+                isMajor ? 'hour-marker-major' : 'hour-marker'
+              }`}
+            >
+              {formatMarker(h, timeFormat)}
+            </text>
+          )
+        }
+
+        // Ticks and Subticks
+        const rad = degToRad(hourToAngle(h, angleOffset))
+        const r1 = RING_RADIUS + RING_THICKNESS / 2 + 6
+        const r2 = r1 + (type === 'tick' ? 8 : 4)
+        
+        return (
+          <line
+            key={`tick-${h}`}
+            x1={WHEEL_CENTER + r1 * Math.cos(rad)}
+            y1={WHEEL_CENTER + r1 * Math.sin(rad)}
+            x2={WHEEL_CENTER + r2 * Math.cos(rad)}
+            y2={WHEEL_CENTER + r2 * Math.sin(rad)}
+            stroke="currentColor"
+            strokeWidth={type === 'tick' ? 1.5 : 1}
+            strokeLinecap="round"
+            className="hour-marker transition-colors duration-500 opacity-60 dark:opacity-30"
+          />
+        )
+      })}
 
       {/* ─── Now indicator ─── */}
-      <CurrentTimeIndicator currentTime={currentTime} angleOffset={angleOffset} />
+      <CurrentTimeIndicator 
+        currentTime={currentTime} 
+        angleOffset={angleOffset} 
+        visible={selectedDate === todayDate}
+      />
 
       {/* ─── Hover preview (gap click) ─── */}
       {!isInteracting && !hoveredEdge && hoverPos && hoverInGap && (
@@ -683,10 +751,135 @@ export default function DayWheel({
           </text>
         </g>
       )}
+      {/* ─── Digital Clock Hub ─── */}
+      <DigitalClock 
+        currentTime={currentTime} 
+        timeFormat={timeFormat}
+        isLive={selectedDate === todayDate}
+        dateLabel={dateLabel}
+        onReset={onResetView}
+      />
+
     </svg>
   )
 }
 
+function DigitalClock({ 
+  currentTime, 
+  timeFormat, 
+  isLive, 
+  dateLabel,
+  onReset 
+}: { 
+  currentTime: number
+  timeFormat: TimeFormat
+  isLive: boolean
+  dateLabel?: string
+  onReset: () => void
+}) {
+  const h = Math.floor(currentTime)
+  const m = Math.floor((currentTime % 1) * 60)
+  const displayH = timeFormat === '12h' ? (h % 12 || 12) : h
+  const timeStr = `${displayH}:${m.toString().padStart(2, '0')}`
+
+  return (
+    <motion.g
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+      style={{ cursor: isLive ? 'default' : 'pointer' }}
+      onClick={(e) => {
+        if (!isLive) {
+          e.stopPropagation()
+          onReset()
+        }
+      }}
+    >
+      {/* Theme-aware filter definitions */}
+      <defs>
+        <filter id="hero-glow-dark" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feColorMatrix type="matrix" values="0 0 0 0 1   0 0 0 0 1   0 0 0 0 1  0 0 0 0.5 0" result="white-blur" />
+          <feComposite in="SourceGraphic" in2="white-blur" operator="over" />
+        </filter>
+        <filter id="hero-glow-black" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feColorMatrix type="matrix" values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.35 0" result="dark-blur" />
+          <feComposite in="SourceGraphic" in2="dark-blur" operator="over" />
+        </filter>
+        <filter id="hero-lift-light" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodOpacity="0.1" />
+        </filter>
+      </defs>
+
+      {isLive ? (
+        <text
+          x={WHEEL_CENTER}
+          y={WHEEL_CENTER - 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="fill-black dark:fill-white select-none pointer-events-none transition-colors duration-500"
+          style={{
+            fontSize: '44px',
+            fontWeight: '700',
+            fontFamily: 'Outfit, sans-serif',
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '-0.02em',
+            filter: 'url(#hero-glow-dark)',
+          }}
+        >
+          {timeStr}
+        </text>
+      ) : dateLabel ? (
+        <g className="pointer-events-none">
+          <text
+            x={WHEEL_CENTER}
+            y={WHEEL_CENTER - 16}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="rgba(0,0,0,0.3)"
+            fontSize="14"
+            fontWeight="700"
+            fontFamily="Outfit, sans-serif"
+            className="dark:fill-white/30 tracking-[0.2em] uppercase"
+          >
+            {dateLabel.split(', ')[0]}
+          </text>
+          <text
+            x={WHEEL_CENTER}
+            y={WHEEL_CENTER + 16}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="rgba(0,0,0,0.6)"
+            fontSize="24"
+            fontWeight="bold"
+            fontFamily="Outfit, sans-serif"
+            className="dark:fill-white/60 tracking-tight"
+          >
+            {dateLabel.split(', ').slice(1).join(', ')}
+          </text>
+        </g>
+      ) : null}
+
+      {/* Subtle Seconds Pulse Ring (purely decorative) */}
+      {isLive && (
+        <motion.circle
+          cx={WHEEL_CENTER}
+          cy={WHEEL_CENTER}
+          r={66}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeDasharray="4 200"
+          strokeLinecap="round"
+          className="text-gray-900/10 dark:text-white/10 pointer-events-none"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+    </motion.g>
+  )
+}
 // ─── Time pill ──────────────────────────────────────────────────
 
 function TimePill({ hour, angle, fmt }: { hour: number; angle: number; fmt: TimeFormat }) {
@@ -720,7 +913,8 @@ function TimePill({ hour, angle, fmt }: { hour: number; angle: number; fmt: Time
 
 // ─── Current Time Indicator ─────────────────────────────────────
 
-function CurrentTimeIndicator({ currentTime, angleOffset }: { currentTime: number; angleOffset: number }) {
+function CurrentTimeIndicator({ currentTime, angleOffset, visible }: { currentTime: number; angleOffset: number; visible: boolean }) {
+  if (!visible) return null
   const angle = hourToAngle(currentTime, angleOffset)
   const rad = degToRad(angle)
 
