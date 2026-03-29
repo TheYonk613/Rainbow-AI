@@ -141,11 +141,11 @@ export default function EventCreator({
         <div className="bubble-color-arc">
           {EVENT_COLORS.map((c, i) => {
             const total = EVENT_COLORS.length
-            const angleSpan = 90 // Total degrees the arc covers
+            const angleSpan = 140 // Total degrees the arc covers
             const startAngle = -angleSpan / 2
             const angleStep = angleSpan / Math.max(1, total - 1)
             const angle = startAngle + i * angleStep
-            const radius = 106 // Distance from exact center
+            const radius = 80 // Distance from exact center
 
             // Rotate out from center, move by radius, then rotate back to keep dropshadows upright
             const transformStr = `rotate(${angle}deg) translateY(${radius}px) rotate(${-angle}deg)`

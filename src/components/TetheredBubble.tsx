@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ReactNode } from 'react'
+import { ReactNode, useMemo } from 'react'
 
 interface TetheredBubbleProps {
   anchorX: number
@@ -23,6 +23,42 @@ export default function TetheredBubble({
   // Use the passed center coordinates for exact alignment
   const windowPos = { x: centerX, y: centerY }
 
+  // Build the rainbow gradient for the ring border
+  const bubbleGradient = useMemo(() => {
+    // Full rainbow conic gradient for all bubbles
+    const rainbowGradient = `conic-gradient(
+      from 0deg,
+      var(--g2-inferno-mid),
+      var(--g7-solar-mid),
+      var(--g5-toxic-mid),
+      var(--g3-electric-mid),
+      var(--g6-uv-mid),
+      var(--g1-dusk-mid),
+      var(--g4-laser-mid),
+      var(--g2-inferno-mid)
+    )`
+
+    if (color === 'rainbow' || !color.startsWith('g')) {
+      return rainbowGradient
+    }
+
+    // For specific event colors, accent that color but still show rainbow
+    return `conic-gradient(
+      from 0deg,
+      var(--${color}-mid),
+      var(--${color}-start),
+      var(--g7-solar-mid),
+      var(--g5-toxic-mid),
+      var(--g3-electric-mid),
+      var(--g6-uv-mid),
+      var(--g1-dusk-mid),
+      var(--${color}-end),
+      var(--${color}-mid)
+    )`
+  }, [color])
+
+  const resolvedColor = color.startsWith('g') ? `var(--${color}-mid)` : (color === 'rainbow' ? '#ff5500' : color)
+
   return (
     <div className="fixed inset-0 z-[100] pointer-events-none">
       <motion.div 
@@ -44,7 +80,7 @@ export default function TetheredBubble({
           y1={anchorY}
           x2={windowPos.x}
           y2={windowPos.y}
-          stroke={color.startsWith('g') ? `var(--${color}-mid)` : color}
+          stroke={resolvedColor}
           strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray="5 10"
@@ -56,7 +92,7 @@ export default function TetheredBubble({
           transition={{ delay: 0.1 }}
           cx={anchorX}
           cy={anchorY}
-          fill={color.startsWith('g') ? `var(--${color}-mid)` : color}
+          fill={resolvedColor}
         />
       </svg>
 
@@ -74,9 +110,9 @@ export default function TetheredBubble({
         className="absolute pointer-events-auto"
       >
         <div className="bubble-shell w-full h-full rounded-full flex flex-col items-center justify-center p-4 relative" style={{ 
-          '--bubble-color': color.startsWith('g') ? `var(--${color}-mid)` : color,
-          border: `2px solid ${color.startsWith('g') ? `var(--${color}-mid)` : color}`,
-          boxShadow: `inset 0 0 20px ${color.startsWith('g') ? `var(--${color}-mid)` : color}30, 0 20px 60px rgba(0, 0, 0, 0.15)`
+          '--bubble-color': resolvedColor,
+          '--bubble-gradient': bubbleGradient,
+          boxShadow: `0 20px 60px rgba(0, 0, 0, 0.15), 0 0 30px ${resolvedColor}15`
         } as any}>
           {children}
         </div>

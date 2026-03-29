@@ -337,7 +337,7 @@ body {
   background: rgba(255, 255, 255, 0.95);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
-  /* border is set dynamically in TetheredBubble via inline style with event color */
+  /* border is handled by the ::before gradient rim */
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.15);
   display: flex;
@@ -363,14 +363,32 @@ body {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  box-sizing: border-box; /* Key fix for the missing border */
-  padding: 2.5px; /* Border thickness */
-  background: var(--bubble-gradient, #fff); /* Fallback, overridden inline */
+  box-sizing: border-box;
+  padding: 3.5px; /* Border thickness */
+  background: var(--bubble-gradient,
+    conic-gradient(
+      from 0deg,
+      var(--g2-inferno-mid),
+      var(--g7-solar-mid),
+      var(--g5-toxic-mid),
+      var(--g3-electric-mid),
+      var(--g6-uv-mid),
+      var(--g1-dusk-mid),
+      var(--g4-laser-mid),
+      var(--g2-inferno-mid)
+    )
+  );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
   pointer-events: none;
-  animation: electric-wave 0.6s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  animation: rainbow-ring-spin 8s linear infinite, electric-wave 0.6s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  z-index: -1;
+}
+
+@keyframes rainbow-ring-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes electric-wave {
@@ -391,26 +409,27 @@ body {
 .bubble-orbit-layout {
   position: absolute;
   inset: 0;
-  padding: 40px 20px;
+  padding: 36px 16px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
+  z-index: 1;
 }
 
 /* Preview Top Section: Title and Time */
 .preview-title-display {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   text-align: center;
-  margin-bottom: 4px;
-  max-width: 90%;
+  margin-bottom: 2px;
+  max-width: 85%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  letter-spacing: -0.01em;
-  color: #000;
+  letter-spacing: -0.02em;
+  color: #1a1a1a;
   animation: drift-up 0.4s ease-out forwards;
 }
 
@@ -419,11 +438,12 @@ body {
 }
 
 .preview-time-display {
-  font-size: 1.05rem;
-  color: rgba(0, 0, 0, 0.6);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.85rem;
+  color: rgba(0, 0, 0, 0.5);
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   text-align: center;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
+  font-weight: 500;
   animation: drift-up 0.5s ease-out forwards;
 }
 
@@ -440,8 +460,8 @@ body {
 .preview-action-hub {
   display: flex;
   justify-content: center;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 14px;
+  margin-top: 12px;
   align-items: center;
 }
 
@@ -513,49 +533,7 @@ body {
   border-color: rgba(48, 209, 88, 0.3);
 }
 
-/* ─── Orbit Bubble: Curved Color Arc ─── */
-.bubble-color-arc {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-}
-
-.bubble-color-dot {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-}
-
-.bubble-color-dot:hover {
-  transform: var(--arc-transform) scale(1.25) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.bubble-color-dot.is-active {
-  box-shadow:
-    0 0 0 2.5px white,
-    0 0 0 4px rgba(0, 0, 0, 0.15),
-    0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.dark .bubble-color-dot.is-active {
-  box-shadow:
-    0 0 0 2.5px rgba(255, 255, 255, 0.9),
-    0 0 0 4px rgba(0, 0, 0, 0.4),
-    0 4px 12px rgba(0, 0, 0, 0.4);
-}
+/* ─── (Consolidated into single block below at ~L703) ─── */
 
 /* Title */
 .bubble-title-row {
@@ -700,7 +678,7 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
   
-/* Curved Color Arc - Radial Alignment */
+/* ─── Curved Color Arc — single canonical block ─── */
 .bubble-color-arc {
   position: absolute;
   top: 50%;
@@ -710,40 +688,41 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  pointer-events: auto;
   animation: drift-up 0.6s ease-out forwards;
 }
 
 .bubble-color-dot {
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
   cursor: pointer;
   transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28), box-shadow 0.2s, border-color 0.2s;
   padding: 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  /* The base transform is set inline, we only scale on top of it */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .dark .bubble-color-dot {
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 .bubble-color-dot:hover {
-  transform: var(--arc-transform) scale(1.2) !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  transform: var(--arc-transform) scale(1.25) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
 }
 
 .bubble-color-dot.is-active {
-  border: 2px solid #000;
-  transform: var(--arc-transform) scale(1.15) !important;
-  box-shadow: 0 0 10px currentColor, 0 4px 8px rgba(0, 0, 0, 0.4);
+  border: 2px solid #fff;
+  transform: var(--arc-transform) scale(1.2) !important;
+  box-shadow: 0 0 8px currentColor, 0 0 0 2px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .dark .bubble-color-dot.is-active {
   border-color: #fff;
+  box-shadow: 0 0 10px currentColor, 0 0 0 2px rgba(255, 255, 255, 0.1), 0 4px 8px rgba(0, 0, 0, 0.5);
 }
 
 .bubble-toggle-track.is-on .bubble-toggle-thumb {

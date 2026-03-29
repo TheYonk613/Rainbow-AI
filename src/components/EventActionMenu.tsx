@@ -146,11 +146,11 @@ export default function EventActionMenu({
                 <div className="bubble-color-arc">
                     {EVENT_COLORS.map((c, i) => {
                         const total = EVENT_COLORS.length
-                        const angleSpan = 120
+                        const angleSpan = 140
                         const startAngle = -angleSpan / 2
                         const angleStep = angleSpan / Math.max(1, total - 1)
                         const angle = startAngle + i * angleStep
-                        const radius = 95
+                        const radius = 80
                         const transformStr = `rotate(${angle}deg) translateY(${radius}px) rotate(${-angle}deg)`
                         return (
                             <button
