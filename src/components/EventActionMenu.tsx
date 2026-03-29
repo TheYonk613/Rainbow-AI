@@ -4,12 +4,13 @@ import type { CalendarEvent } from '../types'
 import { EVENT_COLORS } from '../constants'
 import { snapToFiveMinutes } from '../utils'
 
-// ─── Main component ──────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
 
-interface EventActionMenuProps {
+export interface EventActionMenuProps {
     event: CalendarEvent
     anchorX: number
     anchorY: number
+    isOrbitMode?: boolean
     onColorChange: (id: string, color: string) => void
     onTitleChange: (id: string, title: string) => void
     onNotesChange: (id: string, notes: string) => void
@@ -22,10 +23,13 @@ interface EventActionMenuProps {
     isOrbitMode?: boolean
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function EventActionMenu({
     event,
     anchorX,
     anchorY,
+    isOrbitMode,
     onColorChange,
     onTitleChange,
     onNotesChange,
@@ -43,28 +47,25 @@ export default function EventActionMenu({
     const [isEditingTitle, setIsEditingTitle] = useState(false)
     const [isEditingNotes, setIsEditingNotes] = useState(false)
 
-    // Close on outside click
+    // In orbit mode, outside-click and escape are handled by TetheredBubble.
     useEffect(() => {
+        if (isOrbitMode) return
         const handle = (e: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
                 onClose()
             }
         }
         const id = setTimeout(() => document.addEventListener('mousedown', handle), 50)
-        return () => {
-            clearTimeout(id)
-            document.removeEventListener('mousedown', handle)
-        }
-    }, [onClose])
+        return () => { clearTimeout(id); document.removeEventListener('mousedown', handle) }
+    }, [onClose, isOrbitMode])
 
-    // Close on Escape
     useEffect(() => {
+        if (isOrbitMode) return
         const handle = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
         document.addEventListener('keydown', handle)
         return () => document.removeEventListener('keydown', handle)
-    }, [onClose])
+    }, [onClose, isOrbitMode])
 
-    // Focus input when editing starts
     useEffect(() => {
         if (isEditingTitle) {
             inputRef.current?.focus()
@@ -73,9 +74,7 @@ export default function EventActionMenu({
     }, [isEditingTitle])
 
     useEffect(() => {
-        if (isEditingNotes) {
-            notesRef.current?.focus()
-        }
+        if (isEditingNotes) notesRef.current?.focus()
     }, [isEditingNotes])
 
     const vw = window.innerWidth
@@ -217,6 +216,9 @@ export default function EventActionMenu({
                         <input type="time" step="300" value={toTimeInputValue(event.endH)} onChange={(e) => handleTimeInput('end', e.target.value)} />
                     </div>
                 </div>
+            </div>
+        )
+    }
 
                 <div className="apple-menu-duration-tag" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '16px' }}>
                     <span>{durationLabel}</span>
@@ -228,7 +230,6 @@ export default function EventActionMenu({
                             <div className={`absolute top-[2px] left-[2px] w-3 h-3 rounded-full bg-white shadow transition-transform duration-200 ${event.isImpassable ? 'translate-x-4' : 'translate-x-0'}`} />
                         </div>
                     </div>
-                </div>
 
                 <div className="apple-menu-notes-section">
                     <label className="apple-notes-label">Notes</label>
@@ -238,9 +239,8 @@ export default function EventActionMenu({
                         <div className="apple-menu-notes-display" onClick={() => setIsEditingNotes(true)}>{event.notes || 'Add notes...'}</div>
                     )}
                 </div>
-            </div>
 
-            <div className="apple-menu-divider" />
+                <div className="apple-menu-divider" />
 
             <div className="apple-menu-footer">
                 <div className="apple-menu-colors">

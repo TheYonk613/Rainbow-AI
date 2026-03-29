@@ -8,6 +8,7 @@ import DayWheel from './components/DayWheel'
 import DateStrip from './components/DateStrip'
 import DeleteConfirm from './components/DeleteConfirm'
 import EventActionMenu from './components/EventActionMenu'
+import TetheredBubble from './components/TetheredBubble'
 import EventCreator from './components/EventCreator'
 import EventEditor from './components/EventEditor'
 import Settings from './components/Settings'
@@ -72,6 +73,8 @@ export default function App() {
     endH: number
     anchorX: number
     anchorY: number
+    centerX?: number
+    centerY?: number
   } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null)
   const [aiResponse, setAiResponse] = useState<{ message: string; sub?: string } | null>(null)
@@ -175,12 +178,12 @@ export default function App() {
   }, [])
 
   const handleGapClick = useCallback(
-    (hour: number, clientX: number, clientY: number) => {
+    (hour: number, clientX: number, clientY: number, centerX?: number, centerY?: number) => {
       const dayEvents = events.filter((e) => e.date === selectedDate)
       const gap = findGapAtTime(dayEvents, hour)
       if (!gap) return
       const { startH, endH } = defaultEventTimes(hour, gap)
-      setCreator({ startH, endH, anchorX: clientX, anchorY: clientY })
+      setCreator({ startH, endH, anchorX: clientX, anchorY: clientY, centerX: centerX ?? clientX, centerY: centerY ?? clientY })
     },
     [events, selectedDate]
   )
@@ -422,6 +425,13 @@ export default function App() {
             isActive={mode === 'journey'}
           />
         </div>
+        {/* Journey icon — top right, glows at 7PM */}
+        <div className="absolute right-6 top-8 z-30">
+          <JourneyIcon
+            onClick={handleOpenJourney}
+            isActive={mode === 'journey'}
+          />
+        </div>
       </header>
 
       {/* Views Container */}
@@ -598,15 +608,22 @@ export default function App() {
       </button>
 
       {creator && (
-        <EventCreator
-          startH={creator.startH}
-          endH={creator.endH}
+        <TetheredBubble
           anchorX={creator.anchorX}
           anchorY={creator.anchorY}
-          timeFormat={settings.timeFormat}
-          onConfirm={handleCreateEvent}
-          onCancel={handleCancelCreate}
-        />
+          centerX={creator.centerX!}
+          centerY={creator.centerY!}
+          color="rainbow"
+          onClickOutside={handleCancelCreate}
+        >
+          <EventCreator
+            startH={creator.startH}
+            endH={creator.endH}
+            timeFormat={settings.timeFormat}
+            onConfirm={handleCreateEvent}
+            onCancel={handleCancelCreate}
+          />
+        </TetheredBubble>
       )}
 
       <AnimatePresence>

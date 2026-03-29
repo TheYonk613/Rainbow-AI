@@ -295,9 +295,6 @@ body {
 
 /* ─── Settings bottom sheet ─── */
 
-.settings-backdrop {}
-
-.settings-sheet {}
 
 /* ─── Event action menu (choices popup) ─── */
 
@@ -790,10 +787,101 @@ body {
 
 /* ─── Apple-style calendar menu ─── */
 
+.apple-calendar-menu.is-orbit-centered {
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(0, 0, 0, 0.05),
+    0 0 60px -10px var(--menu-glow, rgba(0,0,0,0));
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transform-origin: center;
+}
+
+.dark .apple-calendar-menu.is-orbit-centered {
+  background: rgba(40, 40, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.is-orbit-centered .apple-menu-content {
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.is-orbit-centered .apple-menu-content::-webkit-scrollbar {
+  display: none;
+}
+
+.is-orbit-centered .apple-menu-date-row {
+  margin-bottom: 4px;
+  align-items: center;
+}
+
+.is-orbit-centered .apple-menu-title-row {
+  justify-content: center;
+  margin-bottom: 4px;
+  width: 100%;
+  padding: 0 20px;
+}
+
+.is-orbit-centered .apple-menu-time-picker-row {
+  padding-left: 0;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.is-orbit-centered .apple-menu-duration-tag {
+  padding-left: 0;
+  margin-top: 4px;
+  width: 100%;
+  justify-content: center !important;
+  gap: 12px;
+}
+
+.is-orbit-centered .apple-menu-notes-section.compact {
+  margin-top: 4px;
+  padding: 0 30px;
+  width: 100%;
+}
+
+.is-orbit-centered .apple-menu-notes-display,
+.is-orbit-centered .apple-menu-notes-input {
+  min-height: 50px;
+  max-height: 80px;
+  font-size: 11px;
+}
+
+.is-orbit-centered .apple-menu-footer {
+  padding: 8px 0 12px;
+  width: 100%;
+  justify-content: center;
+  gap: 16px;
+}
+
+.is-orbit-centered .apple-menu-divider {
+  display: none;
+}
+
 .apple-calendar-menu {
   background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
   box-shadow:
@@ -802,6 +890,7 @@ body {
   animation: menu-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   transform-origin: center;
   overflow: hidden;
+  -webkit-user-select: none;
   user-select: none;
   display: flex;
   flex-direction: column;
@@ -1130,6 +1219,7 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.28);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -1463,6 +1553,48 @@ body,
 
 .dark .bg-noise::before {
   opacity: 0.04;
+}
+
+/* ─── Journey Page Animations ─── */
+
+/* Rainbow glow ring on the ✦ icon — active at evening hours */
+@keyframes journey-glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(229, 138, 125, 0.4),
+      0 0 0 4px rgba(163, 166, 230, 0.25),
+      0 0 14px rgba(163, 166, 230, 0.3);
+    opacity: 0.7;
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(229, 138, 125, 0.7),
+      0 0 0 5px rgba(163, 166, 230, 0.4),
+      0 0 22px rgba(163, 166, 230, 0.5);
+    opacity: 1;
+  }
+}
+
+.journey-glow-ring {
+  animation: journey-glow-pulse 2.5s ease-in-out infinite;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Orange border glow for unresolved beat cards */
+@keyframes unresolved-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(251, 146, 60, 0),
+      0 0 12px rgba(251, 146, 60, 0.06);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(251, 146, 60, 0.08),
+      0 0 20px rgba(251, 146, 60, 0.12);
+  }
 }
 
 /* ─── DateWheel (iOS-style horizontal picker) ─── */

@@ -43,16 +43,16 @@ export const HANDLE_RADIUS = 6
 export const EDGE_HIT_RADIUS = 20
 export const MIN_EVENT_DURATION = 1 / 12
 
-// Color palette — neon gradients
+// Color palette — ROYGBIV spectrum
 export const EVENT_COLORS = [
-  'g1-dusk',
-  'g2-inferno',
-  'g3-electric',
-  'g4-laser',
-  'g5-toxic',
-  'g6-uv',
-  'g7-solar',
-  'g8-chrome',
+  'g2-inferno',   // Red / Orange
+  'g7-solar',     // Yellow
+  'g5-toxic',     // Green
+  'g3-electric',  // Cyan / Light Blue
+  'g6-uv',        // Blue / Indigo
+  'g1-dusk',      // Purple
+  'g4-laser',     // Pink
+  'g8-chrome',    // Pink / White
 ]
 
 export const DEFAULT_EVENT_DURATION = 1

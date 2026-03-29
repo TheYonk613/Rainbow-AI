@@ -129,10 +129,11 @@ export default function TaskBalloon({
     const handlePointerDown = () => {
         if (isEditing) return
         popProgress.set(0)
-        animControlsRef.current = fmAnimate(popProgress, 1, { duration: 2, ease: 'easeIn' })
+        // Snappy 400ms pop for satisfying, quick feedback
+        animControlsRef.current = fmAnimate(popProgress, 1, { duration: 0.4, ease: 'easeIn' })
         holdTimerRef.current = setTimeout(() => {
             onPop()
-        }, 2000)
+        }, 400)
     }
 
     const cancelHold = () => {
@@ -143,22 +144,31 @@ export default function TaskBalloon({
         if (animControlsRef.current) {
             animControlsRef.current.stop()
         }
-        // Smoothly return progress to 0
-        fmAnimate(popProgress, 0, { duration: 0.3 })
+        // Smoothly return progress to 0 quickly
+        fmAnimate(popProgress, 0, { duration: 0.2 })
     }
 
-    // Tension jitter mappings
-    // As progress approaches 1, rotate and y jitter increases.
-    // We use a high-frequency sine wave based on the progress.
+    // Tension squeeze mappings
+    // As progress approaches 1, the balloon bulges horizontally and squishes vertically.
+    // We add a tiny, high-frequency rotation just to show strain, but much less violent.
     const tensionRotate = useTransform(popProgress, p => {
-        if (p < 0.2) return 0
-        const intensity = (p - 0.2) * 5 // 0 to 4
-        return Math.sin(p * 100) * intensity
+        if (p < 0.3) return 0
+        const intensity = (p - 0.3) * 1.5 // Max 1.05 degrees
+        return Math.sin(p * 80) * intensity
     })
-    const tensionX = useTransform(popProgress, p => {
-        if (p < 0.2) return 0
-        const intensity = (p - 0.2) * 3
-        return Math.cos(p * 130) * intensity
+
+    // Scale X bulges out
+    const tensionScaleX = useTransform(popProgress, p => {
+        if (p < 0.2) return 1
+        // Smooth squeeze up to 15% wider
+        return 1 + (p - 0.2) * 0.15
+    })
+
+    // Scale Y squishes down
+    const tensionScaleY = useTransform(popProgress, p => {
+        if (p < 0.2) return 1
+        // Smooth squeeze down to 10% shorter
+        return 1 - (p - 0.2) * 0.10
     })
 
     // Progress ring stroke offset calculation
@@ -204,7 +214,8 @@ export default function TaskBalloon({
                         transformOrigin: 'bottom center',
                         cursor: 'pointer',
                         rotate: tensionRotate,
-                        x: tensionX
+                        scaleX: tensionScaleX,
+                        scaleY: tensionScaleY
                     }}
                     animate={!isNew && !isEditing ? {
                         rotate: [-(1.5 + seeded(index) * 2), (1.5 + seeded(index) * 2), -(1.5 + seeded(index) * 2)],

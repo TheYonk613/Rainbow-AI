@@ -40,7 +40,7 @@ interface DayWheelProps {
   dateLabel?: string
   selectedEventId?: string
   onGapClick: (hour: number, clientX: number, clientY: number) => void
-  onEventClick: (event: CalendarEvent, clientX: number, clientY: number) => void
+  onEventClick: (event: CalendarEvent, clientX: number, clientY: number, centerX?: number, centerY?: number) => void
   onEventTimeChange: (id: string, startH: number, endH: number) => void
   onResetView: () => void
 }
@@ -439,13 +439,16 @@ export default function DayWheel({
         const endAngle = hourToAngle(clickedEvent.endH, angleOffset)
         const midAngle = (startAngle + endAngle) / 2
         const midRad = degToRad(midAngle)
-        const midX = WHEEL_CENTER + RING_RADIUS * Math.cos(midRad)
-        const midY = WHEEL_CENTER + RING_RADIUS * Math.sin(midRad)
+        const innerR = RING_RADIUS - RING_THICKNESS / 2
+        const midX = WHEEL_CENTER + innerR * Math.cos(midRad)
+        const midY = WHEEL_CENTER + innerR * Math.sin(midRad)
         const clientMid = svgToClient(svgRef.current, midX, midY)
+        const clientCenter = svgToClient(svgRef.current, WHEEL_CENTER, WHEEL_CENTER)
 
-        onEventClick(clickedEvent, clientMid.x, clientMid.y)
+        onEventClick(clickedEvent, clientMid.x, clientMid.y, clientCenter.x, clientCenter.y)
       } else {
-        onGapClick(hour, e.clientX, e.clientY)
+        const clientCenter = svgToClient(svgRef.current, WHEEL_CENTER, WHEEL_CENTER)
+        onGapClick(hour, e.clientX, e.clientY, clientCenter.x, clientCenter.y)
       }
     },
     [events, onEventClick, onGapClick, sorted, angleOffset]
@@ -534,7 +537,10 @@ export default function DayWheel({
 
         const isPopping = event.isPopping
         const isNew = event.isNew && !isPopping
-        const isReceded = isInteracting && !isActive && !isPopping
+        
+        // Fading logic for preview mode
+        const isOtherEventSelected = selectedEventId !== undefined && selectedEventId !== event.id
+        const isReceded = (isInteracting && !isActive && !isPopping) || isOtherEventSelected
         const isHovered = hoverEventId === event.id
 
         // Duration-aware text sizing
@@ -564,8 +570,8 @@ export default function DayWheel({
               d={d}
               fill={event.color.startsWith('g') ? `url(#grad-${event.color})` : event.color}
               stroke="none"
-              opacity={0.88}
-              className={segmentClass}
+              opacity={isOtherEventSelected ? 0.2 : 0.88}
+              className={`${segmentClass} transition-opacity duration-300`}
               filter={event.color.startsWith('g') ? `url(#glow-${event.color})` : undefined}
               style={{
                 ...(isNew
@@ -590,8 +596,8 @@ export default function DayWheel({
               fill="white"
               fontSize={titleSize}
               fontWeight="600"
-              opacity={isReceded ? 0.5 : 0.9}
-              className={`pointer-events-none select-none ${isPopping ? 'animate-text-dissolve' : ''
+              opacity={isOtherEventSelected ? 0.1 : isReceded ? 0.5 : 0.9}
+              className={`pointer-events-none select-none transition-opacity duration-300 ${isPopping ? 'animate-text-dissolve' : ''
                 }`}
               style={
                 isPopping
@@ -615,9 +621,9 @@ export default function DayWheel({
                 fontSize={isActive || isHovered ? 9 : 8}
                 fontFamily="monospace"
                 fontWeight="500"
-                opacity={isReceded ? 0.4 : isActive || isHovered ? 0.85 : 0.6}
+                opacity={isOtherEventSelected ? 0 : isReceded ? 0.4 : isActive || isHovered ? 0.85 : 0.6}
                 className="pointer-events-none select-none"
-                style={{ transition: 'opacity 0.2s ease, font-size 0.15s ease' }}
+                style={{ transition: 'opacity 0.3s ease, font-size 0.15s ease' }}
               >
                 {formatTime(startH, timeFormat)} – {formatTime(endH, timeFormat)}
               </text>
