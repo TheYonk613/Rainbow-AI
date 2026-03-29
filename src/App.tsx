@@ -193,6 +193,13 @@ export default function App() {
     setEvents((prev) => [...prev, stamped])
     setCreator(null)
 
+    // Persist to SQLite + Google Calendar
+    fetch('http://localhost:3001/api/calendar/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: stamped.id, title: stamped.title, date: stamped.date, startH: stamped.startH, endH: stamped.endH, color: stamped.color })
+    }).catch(err => console.error('Create sync failed:', err));
+
     setTimeout(() => {
       setEvents((prev) => prev.map((e) => (e.id === stamped.id ? { ...e, isNew: false } : e)))
     }, 700)
@@ -271,14 +278,36 @@ export default function App() {
   }, [])
 
   const handleUpdateNotes = useCallback((id: string, notes: string) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, notes } : e)))
+    setEvents((prev) => prev.map((e) => {
+      if (e.id === id) {
+        // Persist notes to SQLite + Google Calendar description
+        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: e.date, startH: e.startH, endH: e.endH, title: e.title, notes })
+        }).catch(err => console.error('Notes sync failed:', err));
+        return { ...e, notes };
+      }
+      return e;
+    }))
     setActionTarget((prev) =>
       prev && prev.event.id === id ? { ...prev, event: { ...prev.event, notes } } : prev
     )
   }, [])
 
   const handleColorChange = useCallback((id: string, color: string) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, color } : e)))
+    setEvents((prev) => prev.map((e) => {
+      if (e.id === id) {
+        // Persist color to SQLite
+        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: e.date, startH: e.startH, endH: e.endH, title: e.title, color })
+        }).catch(err => console.error('Color sync failed:', err));
+        return { ...e, color };
+      }
+      return e;
+    }))
     // Also update the action menu's own event reference so wheel + header reflect new color live
     setActionTarget((prev) =>
       prev && prev.event.id === id ? { ...prev, event: { ...prev.event, color } } : prev
