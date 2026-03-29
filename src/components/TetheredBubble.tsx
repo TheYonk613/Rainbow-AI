@@ -68,14 +68,15 @@ export default function TetheredBubble({
         style={{
           left: windowPos.x,
           top: windowPos.y,
-          width: '320px',
-          height: '320px',
+          width: '260px',
+          height: '260px',
         }}
         className="absolute pointer-events-auto"
       >
-        <div className="bubble-shell" style={{ 
+        <div className="bubble-shell w-full h-full rounded-full flex flex-col items-center justify-center p-4 relative" style={{ 
           '--bubble-color': color.startsWith('g') ? `var(--${color}-mid)` : color,
-          '--bubble-gradient': color.startsWith('g') ? `linear-gradient(135deg, var(--${color}-start), var(--${color}-end))` : color
+          border: `2px solid ${color.startsWith('g') ? `var(--${color}-mid)` : color}`,
+          boxShadow: `inset 0 0 20px ${color.startsWith('g') ? `var(--${color}-mid)` : color}30, 0 20px 60px rgba(0, 0, 0, 0.15)`
         } as any}>
           {children}
         </div>

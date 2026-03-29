@@ -153,7 +153,7 @@ export default function EventActionMenu({
                         const startAngle = -angleSpan / 2
                         const angleStep = angleSpan / Math.max(1, total - 1)
                         const angle = startAngle + i * angleStep
-                        const radius = 110
+                        const radius = 95
                         const transformStr = `rotate(${angle}deg) translateY(${radius}px) rotate(${-angle}deg)`
                         return (
                             <button

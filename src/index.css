@@ -342,8 +342,7 @@ body {
   backdrop-filter: blur(24px) saturate(180%);
   /* border is set dynamically in TetheredBubble via inline style with event color */
   box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(0, 0, 0, 0.04);
+    0 20px 60px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   color: white;
@@ -395,19 +394,20 @@ body {
 .bubble-orbit-layout {
   position: absolute;
   inset: 0;
-  padding: 24px 20px;
+  padding: 40px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
 }
 
 /* Preview Top Section: Title and Time */
 .preview-title-display {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   max-width: 90%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -422,7 +422,7 @@ body {
 }
 
 .preview-time-display {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   color: rgba(0, 0, 0, 0.6);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   text-align: center;
