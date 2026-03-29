@@ -8,7 +8,7 @@ interface EventCreatorProps {
   endH: number
   timeFormat: TimeFormat
   onConfirm: (event: CalendarEvent) => void
-  onCancel: () => void
+  onCancel?: () => void
 }
 
 export default function EventCreator({
@@ -53,95 +53,123 @@ export default function EventCreator({
     }
   }
 
-  // Position color picker dots in an arc at bottom
-  const archRadius = 95
-  const colorCount = EVENT_COLORS.length
-  const totalAngle = 110
-  const startAngle = 90 - totalAngle / 2
+  const toTimeInputValue = (hours: number): string => {
+    const h = Math.floor(hours)
+    const m = Math.round((hours - h) * 60)
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+  }
 
-  const timeOptions = Array.from({ length: 48 }, (_, i) => i * 0.5)
+  const timeInputToDecimal = (val: string): number => {
+    if (!val) return 0
+    const [hh, mm] = val.split(':').map(Number)
+    return hh + mm / 60
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 w-full h-full relative">
-      <div className="hidden">
-        {/* Title input */}
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="What's happening?"
-          value={title}
-          onChange={(e) => {
-            const val = e.target.value
-            setTitle(val.length === 1 ? val.toUpperCase() : val)
-          }}
-          onKeyDown={handleKeyDown}
-          className="w-full text-lg font-semibold text-gray-800 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent border-none outline-none"
-        />
-      </div>
-
-      {/* 2) Middle: Title Input & Create Button */}
-      <div className="flex-1 flex flex-col justify-center items-center px-6 w-full gap-4 mt-2">
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="New Event"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="bubble-title-input w-full"
-          style={{ fontSize: '1.4rem', borderBottomColor: 'rgba(255,255,255,0.2)' }}
-        />
+    <div className="bubble-orbit-layout w-full h-full flex flex-col pt-4 pb-8 relative z-10" onClick={(e) => e.stopPropagation()}>
+      
+      <div className="flex flex-col items-center w-full px-6 z-10 my-auto mb-10">
         
-        <button
-          onClick={handleSubmit}
-          className="create-event-btn hover:bg-white/10 transition-colors"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            backdropFilter: 'blur(10px)',
-            color: '#fff',
-            fontWeight: 700,
-            padding: '10px 24px',
-            borderRadius: '999px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            marginTop: '8px',
-          }}
-        >
-          Create Event
-        </button>
-      </div>
-
-      {/* 3) Bottom Arc: Color Picker */}
-      {EVENT_COLORS.map((c, i) => {
-        const angleDeg = startAngle + i * (totalAngle / (colorCount - 1))
-        const angleRad = (angleDeg * Math.PI) / 180
-        const x = Math.cos(angleRad) * archRadius
-        const y = Math.sin(angleRad) * archRadius
-
-        return (
-          <div
-            key={c}
-            onClick={() => setColor(c)}
-            className="bubble-color-arc absolute cursor-pointer"
-            style={{
-              width: 16,
-              height: 16,
-              borderRadius: '50%',
-              backgroundColor: `var(--${c}-mid)`,
-              transform: `translate(${x}px, ${y}px)`,
-              top: '50%',
-              left: '50%',
-              marginTop: '-8px',
-              marginLeft: '-8px',
-              boxShadow: color === c 
-                ? '0 0 0 2px rgba(255,255,255,0.8), 0 0 8px rgba(0,0,0,0.3)' 
-                : '0 2px 4px rgba(0,0,0,0.2)',
-              opacity: color === c ? 1 : 0.6,
-              transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)'
-            }}
+        {/* Title Input */}
+        <div className="flex justify-center w-full px-2 mt-2">
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="New Event"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="bg-transparent text-center text-white/90 font-bold outline-none border-b border-transparent focus:border-white/40 transition-colors w-full pb-1"
+            style={{ fontSize: '1.4rem', borderBottomColor: 'rgba(255,255,255,0.2)' }}
           />
-        )
-      })}
+        </div>
+
+        {/* Time pickers */}
+        <div className="flex justify-center items-end mt-4 gap-2 w-full px-2">
+            <div className="flex flex-col gap-1 w-full bg-white/5 rounded-lg px-3 py-2 border border-white/5">
+                <label className="text-[10px] text-white/50 uppercase tracking-wider font-semibold">Start</label>
+                <input
+                    type="time" step="900" 
+                    title="Start Time" aria-label="Start Time"
+                    value={toTimeInputValue(localStartH)}
+                    onChange={(e) => setLocalStartH(timeInputToDecimal(e.target.value))}
+                    className="bg-transparent border-none text-white text-[15px] font-medium outline-none cursor-pointer"
+                    style={{ colorScheme: 'dark' }}
+                />
+            </div>
+            
+            <div className="flex justify-center items-center opacity-50 px-1 pb-3 text-lg">
+                —
+            </div>
+
+            <div className="flex flex-col gap-1 w-full bg-white/5 rounded-lg px-3 py-2 border border-white/5">
+                <label className="text-[10px] text-white/50 uppercase tracking-wider font-semibold">End</label>
+                <input
+                    type="time" step="900" 
+                    title="End Time" aria-label="End Time"
+                    value={toTimeInputValue(localEndH)}
+                    onChange={(e) => setLocalEndH(timeInputToDecimal(e.target.value))}
+                    className="bg-transparent border-none text-white text-[15px] font-medium outline-none cursor-pointer"
+                    style={{ colorScheme: 'dark' }}
+                />
+            </div>
+        </div>
+
+        {/* Create Button */}
+        <div className="flex justify-center w-full mt-5">
+            <button
+              onClick={handleSubmit}
+              className="create-event-btn hover:bg-white/10 transition-colors z-20"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
+                color: '#fff',
+                fontFamily: 'Outfit, sans-serif',
+                fontWeight: 600,
+                fontSize: '15px',
+                padding: '8px 20px',
+                borderRadius: '999px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              }}
+            >
+              Create Event
+            </button>
+        </div>
+
+        {/* Bottom: Curved color arc following inner circle */}
+        <div className="bubble-color-arc">
+          {EVENT_COLORS.map((c, i) => {
+            const total = EVENT_COLORS.length
+            const angleSpan = 90 // Total degrees the arc covers
+            const startAngle = -angleSpan / 2
+            const angleStep = angleSpan / Math.max(1, total - 1)
+            const angle = startAngle + i * angleStep
+            const radius = 106 // Distance from exact center
+
+            // Rotate out from center, move by radius, then rotate back to keep dropshadows upright
+            const transformStr = `rotate(${angle}deg) translateY(${radius}px) rotate(${-angle}deg)`
+            
+            return (
+              <button
+                key={c}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setColor(c)
+                }}
+                title={`Color: ${c}`}
+                className={`bubble-color-dot ${c === color ? 'is-active' : ''}`}
+                style={{
+                  backgroundColor: `var(--${c}-mid)`,
+                  transform: transformStr,
+                  '--arc-transform': transformStr,
+                } as React.CSSProperties}
+              />
+            )
+          })}
+        </div>
+
+      </div>
     </div>
   )
 }
