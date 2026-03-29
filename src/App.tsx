@@ -16,7 +16,6 @@ import TasksPage from './components/TasksPage'
 import { JourneyPage } from './components/JourneyPage'
 import JourneyIcon from './components/JourneyIcon'
 import VoiceButton from './components/VoiceButton'
-import TetheredBubble from './components/TetheredBubble'
 
 const STORAGE_KEY = 'ra1nbow-settings'
 const POP_DURATION_MS = 550
@@ -422,13 +421,6 @@ export default function App() {
         <div className="absolute right-6 top-8 z-30">
           <JourneyIcon
             onClick={handleToggleJourney}
-            isActive={mode === 'journey'}
-          />
-        </div>
-        {/* Journey icon — top right, glows at 7PM */}
-        <div className="absolute right-6 top-8 z-30">
-          <JourneyIcon
-            onClick={handleOpenJourney}
             isActive={mode === 'journey'}
           />
         </div>

@@ -61,19 +61,23 @@ export default function EventCreator({
 
   const timeOptions = Array.from({ length: 48 }, (_, i) => i * 0.5)
 
-          {/* Title input */}
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="What's happening?"
-            value={title}
-            onChange={(e) => {
-              const val = e.target.value
-              setTitle(val.length === 1 ? val.toUpperCase() : val)
-            }}
-            onKeyDown={handleKeyDown}
-            className="w-full text-lg font-semibold text-gray-800 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent border-none outline-none"
-          />
+  return (
+    <div className="flex flex-col items-center justify-center p-6 w-full h-full relative">
+      <div className="hidden">
+        {/* Title input */}
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="What's happening?"
+          value={title}
+          onChange={(e) => {
+            const val = e.target.value
+            setTitle(val.length === 1 ? val.toUpperCase() : val)
+          }}
+          onKeyDown={handleKeyDown}
+          className="w-full text-lg font-semibold text-gray-800 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent border-none outline-none"
+        />
+      </div>
 
       {/* 2) Middle: Title Input & Create Button */}
       <div className="flex-1 flex flex-col justify-center items-center px-6 w-full gap-4 mt-2">
