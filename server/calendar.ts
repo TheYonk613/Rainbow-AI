@@ -278,15 +278,7 @@ router.put('/events/:id', async (req, res) => {
     `).get(id) as any;
 
     const auth = getOAuthClientForUser(user.id);
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-    if (auth) {
-=======
     if (auth && eventRow?.provider_event_id) {
->>>>>>> Stashed changes
-=======
-    if (auth && eventRow.provider_event_id) {
->>>>>>> f148769079df0a4add83b5e29095b5a8f3e6b6fd
         const calendar = google.calendar({ version: 'v3', auth: auth as any });
 
         // Build a patch body that only includes what changed

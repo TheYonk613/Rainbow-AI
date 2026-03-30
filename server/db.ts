@@ -57,9 +57,6 @@ export function initDB() {
     );
   `);
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
   // ─── Indexes ───────────────────────────────────────────────────
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events(calendar_id);
@@ -69,8 +66,6 @@ export function initDB() {
     CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
   `);
 
-=======
->>>>>>> f148769079df0a4add83b5e29095b5a8f3e6b6fd
   // ─── Schema Migrations ─────────────────────────────────────────
   // ALTER TABLE is needed because CREATE TABLE IF NOT EXISTS won't add
   // new columns to a table that already exists from a previous version.
@@ -94,10 +89,6 @@ export function initDB() {
     }
   }
 
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> f148769079df0a4add83b5e29095b5a8f3e6b6fd
   // Seed a local developer user if none exists so they can work entirely offline
   const userCount = (db.prepare('SELECT count(*) as count FROM users').get() as any).count;
   if (userCount === 0) {
