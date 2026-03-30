@@ -172,11 +172,11 @@ router.post('/execute', async (req, res) => {
                       
                       const updatedTitle = eventRow.title?.startsWith('✓') ? eventRow.title : `✓ ${eventRow.title || 'Event'}`;
                       
-                      calendar.events.patch({
+                      await calendar.events.patch({
                         calendarId: calendarRow.provider_calendar_id,
                         eventId: eventRow.provider_event_id,
                         requestBody: { summary: updatedTitle, colorId: '10' }
-                      }).catch(err => console.error("Agent Google Sync Failed on Complete:", err));
+                      });
                     }
                   }
                 }

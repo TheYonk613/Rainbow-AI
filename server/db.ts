@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 
 const dbPath = path.join(process.cwd(), 'database.sqlite');
-export const db = new Database(dbPath, { verbose: console.log });
+export const db = new Database(dbPath);
 
 db.pragma('journal_mode = WAL');
 
@@ -57,6 +57,41 @@ export function initDB() {
     );
   `);
 
+<<<<<<< Updated upstream
+=======
+  // ─── Indexes ───────────────────────────────────────────────────
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events(calendar_id);
+    CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
+    CREATE INDEX IF NOT EXISTS idx_calendars_user_id ON calendars(user_id);
+    CREATE INDEX IF NOT EXISTS idx_oauth_user_provider ON oauth_credentials(user_id, provider);
+    CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+  `);
+
+  // ─── Schema Migrations ─────────────────────────────────────────
+  // ALTER TABLE is needed because CREATE TABLE IF NOT EXISTS won't add
+  // new columns to a table that already exists from a previous version.
+  const migrations = [
+    `ALTER TABLE events ADD COLUMN color TEXT`,
+    `ALTER TABLE events ADD COLUMN description TEXT`,
+    `ALTER TABLE events ADD COLUMN startH REAL`,
+    `ALTER TABLE events ADD COLUMN endH REAL`,
+    `ALTER TABLE events ADD COLUMN date TEXT`,
+  ];
+
+  for (const sql of migrations) {
+    try {
+      db.exec(sql);
+      console.log(`Migration applied: ${sql}`);
+    } catch (err: any) {
+      // "duplicate column name" means already migrated — safe to ignore
+      if (!err.message.includes('duplicate column')) {
+        console.error('Migration error:', err.message);
+      }
+    }
+  }
+
+>>>>>>> Stashed changes
   // Seed a local developer user if none exists so they can work entirely offline
   const userCount = (db.prepare('SELECT count(*) as count FROM users').get() as any).count;
   if (userCount === 0) {
