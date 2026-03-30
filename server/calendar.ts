@@ -140,6 +140,7 @@ router.get('/events', (req, res) => {
         startH,
         endH,
         color: r.color || RAINBOW_COLORS[0],
+        notes: r.description || '',
         isImpassable: true
       };
     });
@@ -203,10 +204,57 @@ router.get('/journey', (req, res) => {
   }
 });
 
-// 3. Two-Way Sync Mutations (Write downstream changes back to upstream source)
+// 3a. Create Event (Local → SQLite → Google)
+router.post('/events', async (req, res) => {
+  const { id, title, date, startH, endH, color } = req.body;
+  try {
+    const user = db.prepare('SELECT id FROM users LIMIT 1').get() as any;
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const calendarRow = db.prepare('SELECT id FROM calendars WHERE user_id = ? LIMIT 1').get(user.id) as any;
+    if (!calendarRow) return res.status(500).json({ error: 'No calendar found' });
+
+    const startObj = new Date(date + 'T00:00:00');
+    startObj.setMinutes(startH * 60);
+    const endObj = new Date(date + 'T00:00:00');
+    endObj.setMinutes(endH * 60);
+
+    // Persist to local SQLite immediately
+    db.prepare(`
+      INSERT INTO events (id, calendar_id, provider_event_id, title, start_time, end_time, status, color)
+      VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?)
+      ON CONFLICT(id) DO UPDATE SET title=excluded.title, start_time=excluded.start_time, end_time=excluded.end_time, color=excluded.color
+    `).run(id, calendarRow.id, null, title, startObj.toISOString(), endObj.toISOString(), color || 'g2-inferno');
+
+    // If Google is connected, push upstream
+    const auth = getOAuthClientForUser(user.id);
+    if (auth) {
+      const calendar = google.calendar({ version: 'v3', auth: auth as any });
+      const gcalEvent = await calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: {
+          summary: title,
+          start: { dateTime: startObj.toISOString() },
+          end: { dateTime: endObj.toISOString() },
+        }
+      });
+      // Update our local row with the Google-assigned provider_event_id for future sync
+      if (gcalEvent.data.id) {
+        db.prepare(`UPDATE events SET provider_event_id = ? WHERE id = ?`).run(gcalEvent.data.id, id);
+      }
+    }
+
+    res.json({ success: true, id });
+  } catch (err: any) {
+    console.error('Create Event Failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3b. Two-Way Sync Mutations (Write downstream changes back to upstream source)
 router.put('/events/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, date, startH, endH } = req.body;
+  const { title, date, startH, endH, color, notes } = req.body;
 
   try {
     const user = db.prepare('SELECT id FROM users LIMIT 1').get() as any;
@@ -219,22 +267,29 @@ router.put('/events/:id', async (req, res) => {
     const endObj = new Date(date + 'T00:00:00');
     endObj.setMinutes(endH * 60);
 
-    // Speed: Commit locally to SQLite instantly
-    db.prepare(`UPDATE events SET start_time = ?, end_time = ?, title = COALESCE(?, title) WHERE id = ?`)
-      .run(startObj.toISOString(), endObj.toISOString(), title, id);
+    // Speed: Commit locally to SQLite instantly (color and description are optional updates)
+    db.prepare(`UPDATE events SET start_time = ?, end_time = ?, title = COALESCE(?, title), color = COALESCE(?, color), description = COALESCE(?, description) WHERE id = ?`)
+      .run(startObj.toISOString(), endObj.toISOString(), title, color, notes, id);
 
     const eventRow = db.prepare(`SELECT provider_event_id, calendar_id FROM events WHERE id = ?`).get(id) as any;
     const providerCalendarId = db.prepare(`SELECT provider_calendar_id FROM calendars WHERE id = ?`).get(eventRow.calendar_id) as any;
 
     const auth = getOAuthClientForUser(user.id);
-    if (auth) {
+    if (auth && eventRow.provider_event_id) {
         const calendar = google.calendar({ version: 'v3', auth: auth as any });
+
+        // Build a patch body that only includes what changed
+        const patchBody: any = {};
+        if (title) patchBody.summary = title;
+        if (notes !== undefined) patchBody.description = notes;
+        patchBody.start = { dateTime: startObj.toISOString() };
+        patchBody.end = { dateTime: endObj.toISOString() };
 
         // Consistency: Remote-patch Google Calendar natively
         await calendar.events.patch({
           calendarId: providerCalendarId.provider_calendar_id,
           eventId: eventRow.provider_event_id,
-          requestBody: { summary: title, start: { dateTime: startObj.toISOString() }, end: { dateTime: endObj.toISOString() } }
+          requestBody: patchBody
         });
     }
     

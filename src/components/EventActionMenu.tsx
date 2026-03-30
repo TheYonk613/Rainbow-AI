@@ -20,7 +20,6 @@ export interface EventActionMenuProps {
     onDelete: (event: CalendarEvent) => void
     onComplete?: (event: CalendarEvent) => void
     onClose: () => void
-    isOrbitMode?: boolean
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -39,7 +38,6 @@ export default function EventActionMenu({
     onDelete,
     onComplete,
     onClose,
-    isOrbitMode,
 }: EventActionMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
@@ -148,11 +146,11 @@ export default function EventActionMenu({
                 <div className="bubble-color-arc">
                     {EVENT_COLORS.map((c, i) => {
                         const total = EVENT_COLORS.length
-                        const angleSpan = 120
+                        const angleSpan = 140
                         const startAngle = -angleSpan / 2
                         const angleStep = angleSpan / Math.max(1, total - 1)
                         const angle = startAngle + i * angleStep
-                        const radius = 95
+                        const radius = 80
                         const transformStr = `rotate(${angle}deg) translateY(${radius}px) rotate(${-angle}deg)`
                         return (
                             <button
@@ -216,9 +214,6 @@ export default function EventActionMenu({
                         <input type="time" step="300" value={toTimeInputValue(event.endH)} onChange={(e) => handleTimeInput('end', e.target.value)} />
                     </div>
                 </div>
-            </div>
-        )
-    }
 
                 <div className="apple-menu-duration-tag" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '16px' }}>
                     <span>{durationLabel}</span>
@@ -230,6 +225,7 @@ export default function EventActionMenu({
                             <div className={`absolute top-[2px] left-[2px] w-3 h-3 rounded-full bg-white shadow transition-transform duration-200 ${event.isImpassable ? 'translate-x-4' : 'translate-x-0'}`} />
                         </div>
                     </div>
+                </div>
 
                 <div className="apple-menu-notes-section">
                     <label className="apple-notes-label">Notes</label>
@@ -242,15 +238,16 @@ export default function EventActionMenu({
 
                 <div className="apple-menu-divider" />
 
-            <div className="apple-menu-footer">
-                <div className="apple-menu-colors">
-                    {EVENT_COLORS.map((c) => (
-                        <button key={c} onClick={() => onColorChange(event.id, c)} className={`apple-color-dot ${c === event.color ? 'is-active' : ''}`} style={{ backgroundColor: `var(--${c}-mid)` }} />
-                    ))}
+                <div className="apple-menu-footer">
+                    <div className="apple-menu-colors">
+                        {EVENT_COLORS.map((c) => (
+                            <button key={c} onClick={() => onColorChange(event.id, c)} className={`apple-color-dot ${c === event.color ? 'is-active' : ''}`} style={{ backgroundColor: `var(--${c}-mid)` }} />
+                        ))}
+                    </div>
+                    <button className="apple-menu-delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(event) }}>
+                        <Trash2 size={14} />
+                    </button>
                 </div>
-                <button className="apple-menu-delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(event) }}>
-                    <Trash2 size={14} />
-                </button>
             </div>
         </div>
     )
