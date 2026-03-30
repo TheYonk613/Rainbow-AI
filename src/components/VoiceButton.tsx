@@ -52,10 +52,11 @@ export default function VoiceButton({ onAiAction }: VoiceButtonProps) {
             method: 'POST',
             body: formData
           });
+          if (!tRes.ok) {
+            const errData = await tRes.json().catch(() => ({}));
+            throw new Error(errData.error || 'Failed to transcribe audio.');
+          }
           const tData = await tRes.json();
-          
-          if (!tRes.ok) throw new Error(tData.error || 'Failed to transcribe audio.');
-          
           const transcript = tData.transcript || tData.mockTranscript || '';
 
           // 2. Pass resulting transcription up to Agentic Execution logic
@@ -64,6 +65,10 @@ export default function VoiceButton({ onAiAction }: VoiceButtonProps) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ transcript })
           });
+          if (!xRes.ok) {
+            const errData = await xRes.json().catch(() => ({}));
+            throw new Error(errData.error || 'Failed to execute voice command.');
+          }
           const xData = await xRes.json();
 
           // Bubble payload to UI regardless of pass/fail so they see result

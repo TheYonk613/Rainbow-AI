@@ -271,11 +271,14 @@ router.put('/events/:id', async (req, res) => {
     db.prepare(`UPDATE events SET start_time = ?, end_time = ?, title = COALESCE(?, title), color = COALESCE(?, color), description = COALESCE(?, description) WHERE id = ?`)
       .run(startObj.toISOString(), endObj.toISOString(), title, color, notes, id);
 
-    const eventRow = db.prepare(`SELECT provider_event_id, calendar_id FROM events WHERE id = ?`).get(id) as any;
-    const providerCalendarId = db.prepare(`SELECT provider_calendar_id FROM calendars WHERE id = ?`).get(eventRow.calendar_id) as any;
+    const eventRow = db.prepare(`
+      SELECT e.provider_event_id, c.provider_calendar_id
+      FROM events e JOIN calendars c ON e.calendar_id = c.id
+      WHERE e.id = ?
+    `).get(id) as any;
 
     const auth = getOAuthClientForUser(user.id);
-    if (auth && eventRow.provider_event_id) {
+    if (auth && eventRow?.provider_event_id) {
         const calendar = google.calendar({ version: 'v3', auth: auth as any });
 
         // Build a patch body that only includes what changed
@@ -287,7 +290,7 @@ router.put('/events/:id', async (req, res) => {
 
         // Consistency: Remote-patch Google Calendar natively
         await calendar.events.patch({
-          calendarId: providerCalendarId.provider_calendar_id,
+          calendarId: eventRow.provider_calendar_id,
           eventId: eventRow.provider_event_id,
           requestBody: patchBody
         });
@@ -306,20 +309,23 @@ router.delete('/events/:id', async (req, res) => {
     const user = db.prepare('SELECT id FROM users LIMIT 1').get() as any;
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const eventRow = db.prepare(`SELECT provider_event_id, calendar_id FROM events WHERE id = ?`).get(id) as any;
-    const providerCalendarId = db.prepare(`SELECT provider_calendar_id FROM calendars WHERE id = ?`).get(eventRow.calendar_id) as any;
+    const eventRow = db.prepare(`
+      SELECT e.provider_event_id, c.provider_calendar_id
+      FROM events e JOIN calendars c ON e.calendar_id = c.id
+      WHERE e.id = ?
+    `).get(id) as any;
 
     // Locally archive/soft-cancel
     db.prepare(`UPDATE events SET status = 'cancelled' WHERE id = ?`).run(id);
 
     const auth = getOAuthClientForUser(user.id);
-    if (auth) {
+    if (auth && eventRow?.provider_event_id) {
         const calendar = google.calendar({ version: 'v3', auth: auth as any });
 
         // Remote deletion execution
-        await calendar.events.delete({ 
-          calendarId: providerCalendarId.provider_calendar_id, 
-          eventId: eventRow.provider_event_id 
+        await calendar.events.delete({
+          calendarId: eventRow.provider_calendar_id,
+          eventId: eventRow.provider_event_id
         });
     }
     
@@ -336,9 +342,12 @@ router.post('/events/:id/complete', async (req, res) => {
     const user = db.prepare('SELECT id FROM users LIMIT 1').get() as any;
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const eventRow = db.prepare(`SELECT provider_event_id, calendar_id, title FROM events WHERE id = ?`).get(id) as any;
+    const eventRow = db.prepare(`
+      SELECT e.provider_event_id, e.title, c.provider_calendar_id
+      FROM events e JOIN calendars c ON e.calendar_id = c.id
+      WHERE e.id = ?
+    `).get(id) as any;
     if (!eventRow) return res.status(404).json({ error: 'Event not found' });
-    const providerCalendarId = db.prepare(`SELECT provider_calendar_id FROM calendars WHERE id = ?`).get(eventRow.calendar_id) as any;
 
     // Locally mark as completed instead of cancelled
     db.prepare(`UPDATE events SET status = 'completed' WHERE id = ?`).run(id);
@@ -349,9 +358,9 @@ router.post('/events/:id/complete', async (req, res) => {
 
         // Remote indication: We rename it on Google Calendar with a checkmark so the user sees it is done!
         const updatedTitle = eventRow.title?.startsWith('✓') ? eventRow.title : `✓ ${eventRow.title}`;
-        
+
         await calendar.events.patch({
-          calendarId: providerCalendarId.provider_calendar_id,
+          calendarId: eventRow.provider_calendar_id,
           eventId: eventRow.provider_event_id,
           requestBody: { summary: updatedTitle, colorId: '10' } // 10 is usually Basil/Green on Google
         });
@@ -370,9 +379,12 @@ router.post('/events/:id/restore', async (req, res) => {
     const user = db.prepare('SELECT id FROM users LIMIT 1').get() as any;
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const eventRow = db.prepare(`SELECT provider_event_id, calendar_id, title FROM events WHERE id = ?`).get(id) as any;
+    const eventRow = db.prepare(`
+      SELECT e.provider_event_id, e.title, c.provider_calendar_id
+      FROM events e JOIN calendars c ON e.calendar_id = c.id
+      WHERE e.id = ?
+    `).get(id) as any;
     if (!eventRow) return res.status(404).json({ error: 'Event not found' });
-    const providerCalendarId = db.prepare(`SELECT provider_calendar_id FROM calendars WHERE id = ?`).get(eventRow.calendar_id) as any;
 
     // Locally restore to active orbit
     db.prepare(`UPDATE events SET status = 'confirmed' WHERE id = ?`).run(id);
@@ -383,9 +395,9 @@ router.post('/events/:id/restore', async (req, res) => {
 
         // Remote indication: Remove the checkmark if present
         const cleanTitle = eventRow.title?.replace(/^✓\s*/, '');
-        
+
         await calendar.events.patch({
-          calendarId: providerCalendarId.provider_calendar_id,
+          calendarId: eventRow.provider_calendar_id,
           eventId: eventRow.provider_event_id,
           requestBody: { 
             summary: cleanTitle, 

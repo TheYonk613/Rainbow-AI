@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 
 const dbPath = path.join(process.cwd(), 'database.sqlite');
-export const db = new Database(dbPath, { verbose: console.log });
+export const db = new Database(dbPath);
 
 db.pragma('journal_mode = WAL');
 
@@ -55,6 +55,15 @@ export function initDB() {
       due_date DATETIME,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+  `);
+
+  // ─── Indexes ───────────────────────────────────────────────────
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events(calendar_id);
+    CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
+    CREATE INDEX IF NOT EXISTS idx_calendars_user_id ON calendars(user_id);
+    CREATE INDEX IF NOT EXISTS idx_oauth_user_provider ON oauth_credentials(user_id, provider);
+    CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
   `);
 
   // ─── Schema Migrations ─────────────────────────────────────────
