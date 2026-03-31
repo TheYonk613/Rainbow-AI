@@ -48,7 +48,7 @@ export default function VoiceButton({ onAiAction }: VoiceButtonProps) {
           const formData = new FormData();
           formData.append('audio', audioBlob, 'voice_command.webm');
           
-          const tRes = await fetch('http://localhost:3001/api/ai/transcribe', {
+          const tRes = await fetch('${import.meta.env.VITE_API_URL}/api/ai/transcribe', {
             method: 'POST',
             body: formData
           });
@@ -60,7 +60,7 @@ export default function VoiceButton({ onAiAction }: VoiceButtonProps) {
           const transcript = tData.transcript || tData.mockTranscript || '';
 
           // 2. Pass resulting transcription up to Agentic Execution logic
-          const xRes = await fetch('http://localhost:3001/api/ai/execute', {
+          const xRes = await fetch('${import.meta.env.VITE_API_URL}/api/ai/execute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ transcript })

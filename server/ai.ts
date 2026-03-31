@@ -11,6 +11,9 @@ const router = Router();
 // Store temporary audio files before sending to OpenAI Whisper
 const upload = multer({ dest: 'uploads/' });
 
+// Cache compressed schedule for 60s to avoid redundant DB hits on rapid voice commands
+let scheduleCache: { value: string; expiresAt: number } | null = null;
+
 // Initialize OpenAI conditionally so the server doesn't crash before the user adds their Key
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'KEY_PENDING' 
@@ -104,11 +107,17 @@ router.post('/execute', async (req, res) => {
     // 3a. Context Injection (Token Diet Strategy)
     // Only pass the next ~14 days of events, and compress them into raw string arrays to save 95% token cost!
     const todayStr = new Date().toISOString().split('T')[0];
-    const rawEvents = db.prepare(`SELECT id, title, date, startH FROM events WHERE date >= ? ORDER BY date ASC, startH ASC LIMIT 40`).all(todayStr) as any[];
-    
-    const compressedSchedule = rawEvents.length 
-       ? rawEvents.map(e => `[${e.id}] ${e.title} at ${e.startH}h on ${e.date}`).join(' | ')
-       : "No upcoming events.";
+    const now = Date.now();
+    if (!scheduleCache || now > scheduleCache.expiresAt) {
+      const rawEvents = db.prepare(`SELECT id, title, date, startH FROM events WHERE date >= ? ORDER BY date ASC, startH ASC LIMIT 40`).all(todayStr) as any[];
+      scheduleCache = {
+        value: rawEvents.length
+          ? rawEvents.map(e => `[${e.id}] ${e.title} at ${e.startH}h on ${e.date}`).join(' | ')
+          : "No upcoming events.",
+        expiresAt: now + 60_000
+      };
+    }
+    const compressedSchedule = scheduleCache.value;
 
     const systemPrompt = `You are Rainbow-AI assistant. Current Date: ${todayStr}. Upcoming Schedule: ${compressedSchedule}
     Rules: You only execute modifications. Never attempt code or system changes.`;

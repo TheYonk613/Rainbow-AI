@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 interface FragmentsProps {
     color: string
@@ -18,6 +18,14 @@ const CONFETTI_COLORS = [
 ]
 
 export default function BalloonParticles({ color, startX, startY }: FragmentsProps) {
+    const [visible, setVisible] = useState(true)
+
+    // Max particle lifetime is 3.0s + max delay 0.04s — hide after that
+    useEffect(() => {
+        const timer = setTimeout(() => setVisible(false), 3100)
+        return () => clearTimeout(timer)
+    }, [])
+
     // Stable per-mount particle data — no useEffect setState lag
     const fragments = useMemo(() => {
         const count = 36
@@ -53,6 +61,8 @@ export default function BalloonParticles({ color, startX, startY }: FragmentsPro
             return { vx, vy, pieceColor, w, h, spinAmount, lifetime, fadeStart, delay: sr(i) * 0.04 }
         })
     }, [color])
+
+    if (!visible) return null
 
     return (
         <div

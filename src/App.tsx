@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { CalendarEvent, TimeFormat } from './types'
 import { type CompletedTask, type JourneyBeat } from './data/journeyMockData'
@@ -62,6 +62,7 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState<string>(todayDate)
 
   const [events, setEvents] = useState<CalendarEvent[]>([])
+  const selectedDateEvents = useMemo(() => events.filter((e) => e.date === selectedDate), [events, selectedDate])
   const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([])
   const [beats, setBeats] = useState<JourneyBeat[]>([])
   const [showSettings, setShowSettings] = useState(false)
@@ -81,7 +82,7 @@ export default function App() {
   const fetchJourney = useCallback(async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const res = await fetch(`http://localhost:3001/api/calendar/journey?date=${today}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/calendar/journey?date=${today}`);
       if (res.ok) {
         const data = await res.json();
         setCompletedTasks(data.completedTasks || []);
@@ -94,7 +95,7 @@ export default function App() {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/calendar/events');
+      const res = await fetch('${import.meta.env.VITE_API_URL}/api/calendar/events');
       if (res.ok) {
           const data = await res.json();
           setEvents(data || []);
@@ -148,7 +149,7 @@ export default function App() {
     let isMounted = true;
     (async () => {
       try {
-        await fetch('http://localhost:3001/api/calendar/sync', { method: 'POST' });
+        await fetch('${import.meta.env.VITE_API_URL}/api/calendar/sync', { method: 'POST' });
         if (isMounted) {
           await fetchEvents();
           await fetchJourney();
@@ -178,13 +179,12 @@ export default function App() {
 
   const handleGapClick = useCallback(
     (hour: number, clientX: number, clientY: number, centerX?: number, centerY?: number) => {
-      const dayEvents = events.filter((e) => e.date === selectedDate)
-      const gap = findGapAtTime(dayEvents, hour)
+      const gap = findGapAtTime(selectedDateEvents, hour)
       if (!gap) return
       const { startH, endH } = defaultEventTimes(hour, gap)
       setCreator({ startH, endH, anchorX: clientX, anchorY: clientY, centerX: centerX ?? clientX, centerY: centerY ?? clientY })
     },
-    [events, selectedDate]
+    [selectedDateEvents]
   )
 
   const handleCreateEvent = useCallback((event: CalendarEvent) => {
@@ -194,7 +194,7 @@ export default function App() {
     setCreator(null)
 
     // Persist to SQLite + Google Calendar
-    fetch('http://localhost:3001/api/calendar/events', {
+    fetch('${import.meta.env.VITE_API_URL}/api/calendar/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: stamped.id, title: stamped.title, date: stamped.date, startH: stamped.startH, endH: stamped.endH, color: stamped.color })
@@ -233,7 +233,7 @@ export default function App() {
     setDeleteTarget(null)
 
     // Optimistic UI Google Deletion Bridge
-    fetch(`http://localhost:3001/api/calendar/events/${targetId}`, { method: 'DELETE' })
+    fetch(`${import.meta.env.VITE_API_URL}/api/calendar/events/${targetId}`, { method: 'DELETE' })
       .catch(err => console.error('Remote deletion failed', err))
 
     setEvents((prev) => prev.map((e) => (e.id === targetId ? { ...e, isPopping: true } : e)))
@@ -249,7 +249,7 @@ export default function App() {
     setEvents((prev) => prev.map((e) => {
       if (e.id === id) {
         // Optimistic UI Update Backend Call - Never pauses React rendering
-        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+        fetch(`${import.meta.env.VITE_API_URL}/api/calendar/events/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ date: e.date, startH, endH, title: e.title })
@@ -263,7 +263,7 @@ export default function App() {
   const handleRenameEvent = useCallback((id: string, newTitle: string) => {
     setEvents((prev) => prev.map((e) => {
       if (e.id === id) {
-        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+        fetch(`${import.meta.env.VITE_API_URL}/api/calendar/events/${id}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ date: e.date, startH: e.startH, endH: e.endH, title: newTitle })
         }).catch(err => console.error('Sync failed:', err));
@@ -281,7 +281,7 @@ export default function App() {
     setEvents((prev) => prev.map((e) => {
       if (e.id === id) {
         // Persist notes to SQLite + Google Calendar description
-        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+        fetch(`${import.meta.env.VITE_API_URL}/api/calendar/events/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ date: e.date, startH: e.startH, endH: e.endH, title: e.title, notes })
@@ -299,7 +299,7 @@ export default function App() {
     setEvents((prev) => prev.map((e) => {
       if (e.id === id) {
         // Persist color to SQLite
-        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+        fetch(`${import.meta.env.VITE_API_URL}/api/calendar/events/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ date: e.date, startH: e.startH, endH: e.endH, title: e.title, color })
@@ -329,7 +329,7 @@ export default function App() {
   const handleTimeChange = useCallback((id: string, startH: number, endH: number) => {
     setEvents((prev) => prev.map((e) => {
       if (e.id === id) {
-        fetch(`http://localhost:3001/api/calendar/events/${id}`, {
+        fetch(`${import.meta.env.VITE_API_URL}/api/calendar/events/${id}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ date: e.date, startH, endH, title: e.title })
         }).catch(err => console.error('Sync failed:', err));
@@ -356,7 +356,7 @@ export default function App() {
     const targetId = event.id
 
     // Optimistic UI Backend Bridge for Completion
-    fetch(`http://localhost:3001/api/calendar/events/${targetId}/complete`, { method: 'POST' })
+    fetch(`${import.meta.env.VITE_API_URL}/api/calendar/events/${targetId}/complete`, { method: 'POST' })
       .catch(err => console.error('Remote completion failed', err))
 
     setEvents((prev) => prev.map((e) => (e.id === targetId ? { ...e, isPopping: true } : e)))
@@ -385,7 +385,7 @@ export default function App() {
   // Close ring-only overlays when leaving the orbit view
   const handleRestoreEvent = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/calendar/events/${id}/restore`, { method: 'POST' });
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/calendar/events/${id}/restore`, { method: 'POST' });
       if (res.ok) {
         // Refresh both views to keep state consistent across Orbit and Journey
         await fetchEvents();
@@ -506,7 +506,7 @@ export default function App() {
             {/* Top Area: DayWheel Ring */}
             <div className="w-full max-w-[560px] flex flex-col items-center mb-2 relative group" ref={wheelRef}>
               <DayWheel
-                events={events.filter((e) => e.date === selectedDate)}
+                events={selectedDateEvents}
                 currentTime={currentTime}
                 selectedDate={selectedDate}
                 todayDate={todayDate}
