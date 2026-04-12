@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          # Provide stub values so Vite can resolve import.meta.env at build time.
+          # Real secrets are never stored here — set them in your deployment platform.
+          VITE_API_URL: http://localhost:3001
+
+      # ── Deploy (add your platform step here) ─────────────────────
+      # Uncomment and configure one of the options below when ready:
+      #
+      # Option A — Vercel (recommended once PostgreSQL/Supabase is set up)
+      # - name: Deploy to Vercel
+      #   if: github.ref == 'refs/heads/main'
+      #   run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+      #
+      # Option B — Railway
+      # - name: Deploy to Railway
+      #   if: github.ref == 'refs/heads/main'
+      #   uses: bervProject/railway-deploy@main
+      #   with:
+      #     railway_token: ${{ secrets.RAILWAY_TOKEN }}
+      #     service: rainbow-ai

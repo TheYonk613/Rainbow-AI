@@ -17,6 +17,13 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('App crashed:', error, info.componentStack)
+
+    // Sentry integration: set VITE_SENTRY_DSN in your .env to enable error reporting.
+    // Install: npm i @sentry/react   then uncomment the import and captureException call.
+    // import * as Sentry from '@sentry/react';
+    // if (import.meta.env.VITE_SENTRY_DSN) {
+    //   Sentry.captureException(error, { extra: { componentStack: info.componentStack } });
+    // }
   }
 
   render() {

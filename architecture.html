@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rainbow-AI · Architecture Blueprint</title>
+<style>
+/* ============================================================
+   THEME VARIABLES — edit these to restyle the entire diagram
+   ============================================================ */
+:root {
+  --bg:           #07090f;
+  --surface:      #0d1120;
+  --surface2:     #141929;
+  --border:       #1c2540;
+  --text:         #e2e8f0;
+  --muted:        #4b5573;
+
+  --built:        #22c55e;   /* Green  — implemented & working      */
+  --built-bg:     #071a0e;
+  --partial:      #f59e0b;   /* Amber  — built but needs prod work   */
+  --partial-bg:   #1a1100;
+  --missing:      #ef4444;   /* Red    — not yet built               */
+  --missing-bg:   #1a0505;
+  --external:     #6366f1;   /* Indigo — 3rd-party service           */
+  --external-bg:  #0a0b22;
+  --future:       #a78bfa;   /* Purple — planned / future provider   */
+  --future-bg:    #0e0a22;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+#topbar h1 {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+#topbar h1 span { color: #6366f1; }
+.topbar-sub {
+  font-size: 11px;
+  color: var(--muted);
+  border-left: 1px solid var(--border);
+  padding-left: 16px;
+}
+
+.legend {
+  display: flex;
+  gap: 14px;
+  margin-left: auto;
+  align-items: center;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: default;
+}
+.ldot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ldot.built    { background: var(--built); }
+.ldot.partial  { background: var(--partial); }
+.ldot.missing  { background: var(--missing); }
+.ldot.external { background: var(--external); }
+.ldot.future   { background: var(--future); }
+
+.tbtn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 13px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.tbtn:hover { background: var(--border); }
+.tbtn.active { background: #1e2a6a; border-color: var(--external); color: #a5b4fc; }
+
+/* ── MAIN LAYOUT ── */
+#main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── SVG CANVAS ── */
+#canvas-wrap {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#canvas-wrap.dragging { cursor: grabbing; }
+
+svg#diagram {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* node click areas */
+.node-group { cursor: pointer; }
+.node-group:hover .node-bg { filter: brightness(1.25); }
+.node-group.selected .node-bg {
+  filter: brightness(1.4) drop-shadow(0 0 6px rgba(255,255,255,0.15));
+}
+
+/* ── SIDE PANEL ── */
+#panel {
+  width: 390px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateX(390px);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#panel.open { transform: translateX(0); }
+
+.panel-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.panel-head-info h2 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.panel-head-info .psub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-family: 'Fira Code', monospace;
+}
+.panel-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.panel-close:hover { color: var(--text); }
+
+#panel-body { overflow-y: auto; flex: 1; }
+
+.psec {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.psec h3 {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.status-pill.built    { background: var(--built-bg);   color: #86efac; border: 1px solid #166534; }
+.status-pill.partial  { background: var(--partial-bg); color: #fcd34d; border: 1px solid #854d0e; }
+.status-pill.missing  { background: var(--missing-bg); color: #fca5a5; border: 1px solid #7f1d1d; }
+.status-pill.external { background: var(--external-bg);color: #a5b4fc; border: 1px solid #3730a3; }
+.status-pill.future   { background: var(--future-bg);  color: #c4b5fd; border: 1px solid #5b21b6; }
+
+.ptext { font-size: 13px; line-height: 1.6; color: #94a3b8; }
+
+.blist { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.blist li {
+  font-size: 12px;
+  padding: 0 0 0 14px;
+  position: relative;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+.blist li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--muted);
+}
+
+.routes { display: flex; flex-direction: column; gap: 5px; }
+.route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11px;
+}
+.method {
+  font-weight: 700;
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+.method.GET    { background: #052e16; color: #86efac; }
+.method.POST   { background: #1e1b4b; color: #a5b4fc; }
+.method.PUT    { background: #1a1100; color: #fcd34d; }
+.method.DELETE { background: #1a0505; color: #fca5a5; }
+.route-path { color: #7dd3fc; }
+.route-desc { color: var(--muted); font-size: 10px; margin-left: auto; font-family: sans-serif; }
+
+.schema { display: flex; flex-direction: column; gap: 5px; }
+.table-item {
+  padding: 6px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+}
+.table-name { font-weight: 700; color: #fcd34d; font-family: monospace; }
+.table-cols { color: var(--muted); margin-top: 2px; font-size: 10px; font-family: monospace; }
+
+.gap-list { display: flex; flex-direction: column; gap: 6px; }
+.gap-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.gap-item.critical { background: var(--missing-bg); border: 1px solid #7f1d1d; }
+.gap-item.important { background: var(--partial-bg); border: 1px solid #854d0e; }
+.gap-title { font-weight: 600; }
+.gap-item.critical .gap-title { color: #fca5a5; }
+.gap-item.important .gap-title { color: #fcd34d; }
+.gap-desc { color: #6b7280; margin-top: 2px; font-size: 11px; }
+
+.code-chip {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  background: var(--surface2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: #7dd3fc;
+  white-space: nowrap;
+}
+
+.env-list { display: flex; flex-direction: column; gap: 4px; }
+.env-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  background: var(--surface2);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+.env-key { font-family: monospace; font-size: 10px; color: #fcd34d; }
+.env-req { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 700; }
+.env-req.required { background: var(--missing-bg); color: #fca5a5; border: 1px solid #7f1d1d; }
+.env-req.optional { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+
+/* ── PRODUCTION CHECKLIST ── */
+#checklist {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: 80;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-radius: 0 12px 0 0;
+  max-width: 900px;
+  width: 100%;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(100% - 42px));
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#checklist.open { transform: translateY(0); }
+
+#checklist-toggle {
+  height: 42px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+#checklist-toggle .cl-title { display: flex; align-items: center; gap: 10px; }
+.cl-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 700;
+}
+.cl-badge.red  { background: var(--missing-bg); color: #fca5a5; border: 1px solid #7f1d1d; }
+.cl-badge.amber { background: var(--partial-bg); color: #fcd34d; border: 1px solid #854d0e; }
+.cl-badge.blue  { background: var(--external-bg); color: #a5b4fc; border: 1px solid #3730a3; }
+.cl-arrow { color: var(--muted); transition: transform 0.25s; }
+#checklist.open .cl-arrow { transform: rotate(180deg); }
+
+#checklist-body {
+  overflow-y: auto;
+  padding: 16px 18px 20px;
+  flex: 1;
+}
+.cl-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 12px 0 8px;
+}
+.cl-section-title:first-child { margin-top: 0; }
+.cl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+.cl-item {
+  padding: 9px 13px;
+  border-radius: 7px;
+  font-size: 12px;
+  border: 1px solid transparent;
+}
+.cl-item.critical  { background: var(--missing-bg); border-color: #7f1d1d; }
+.cl-item.important { background: var(--partial-bg); border-color: #854d0e; }
+.cl-item.nice      { background: #0a0e24; border-color: var(--border); }
+.cl-item-title { font-weight: 600; }
+.cl-item.critical  .cl-item-title { color: #fca5a5; }
+.cl-item.important .cl-item-title { color: #fcd34d; }
+.cl-item.nice      .cl-item-title { color: #93c5fd; }
+.cl-item-desc { color: #6b7280; margin-top: 3px; font-size: 11px; line-height: 1.4; }
+
+/* ── ZOOM CONTROLS ── */
+#zoom-controls {
+  position: absolute;
+  bottom: 60px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.zbtn {
+  width: 30px; height: 30px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  line-height: 1;
+}
+.zbtn:hover { background: var(--surface2); }
+
+/* ── HELP TEXT ── */
+#hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <h1>Rainbow-<span>AI</span> · Architecture</h1>
+  <span class="topbar-sub">Monorepo · React 19 + Express 5 · SQLite → PostgreSQL</span>
+  <div class="legend">
+    <div class="legend-item"><div class="ldot built"></div>Built</div>
+    <div class="legend-item"><div class="ldot partial"></div>Needs prod work</div>
+    <div class="legend-item"><div class="ldot missing"></div>Not built yet</div>
+    <div class="legend-item"><div class="ldot external"></div>External service</div>
+    <div class="legend-item"><div class="ldot future"></div>Planned</div>
+  </div>
+  <button class="tbtn" id="checklist-btn" onclick="toggleChecklist()">&#9776; Production Checklist</button>
+  <button class="tbtn" onclick="resetView()">&#8634; Reset View</button>
+</div>
+
+<!-- MAIN AREA -->
+<div id="main">
+  <!-- SVG DIAGRAM -->
+  <div id="canvas-wrap">
+    <svg id="diagram" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Arrow markers for connection lines -->
+        <marker id="arrow-built"    markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22c55e" opacity="0.7"/>
+        </marker>
+        <marker id="arrow-partial"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b" opacity="0.7"/>
+        </marker>
+        <marker id="arrow-missing"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ef4444" opacity="0.7"/>
+        </marker>
+        <marker id="arrow-external" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#6366f1" opacity="0.7"/>
+        </marker>
+        <marker id="arrow-future"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#a78bfa" opacity="0.7"/>
+        </marker>
+        <marker id="arrow-muted"    markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#4b5573" opacity="0.7"/>
+        </marker>
+      </defs>
+      <!-- Rendered by JavaScript below -->
+      <g id="view-group" transform="translate(20,20) scale(1)"></g>
+    </svg>
+
+    <!-- Zoom controls -->
+    <div id="zoom-controls">
+      <button class="zbtn" onclick="zoomIn()" title="Zoom in">+</button>
+      <button class="zbtn" onclick="zoomOut()" title="Zoom out">−</button>
+    </div>
+
+    <div id="hint">Scroll to zoom · Drag to pan · Click any node for details</div>
+  </div>
+
+  <!-- SIDE PANEL -->
+  <div id="panel">
+    <div class="panel-head">
+      <div class="panel-head-info">
+        <h2 id="panel-title">Node Title</h2>
+        <div class="psub" id="panel-sub">file/path</div>
+      </div>
+      <button class="panel-close" onclick="closePanel()">×</button>
+    </div>
+    <div id="panel-body">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCTION CHECKLIST -->
+<div id="checklist">
+  <div id="checklist-toggle" onclick="toggleChecklist()">
+    <div class="cl-title">
+      &#9881; Production Readiness Checklist
+      <span class="cl-badge red">8 Critical</span>
+      <span class="cl-badge amber">7 Important</span>
+      <span class="cl-badge blue">5 Nice-to-have</span>
+    </div>
+    <span class="cl-arrow">&#8963;</span>
+  </div>
+  <div id="checklist-body">
+    <div class="cl-section-title">🔴 Critical — App cannot safely run in production without these</div>
+    <div class="cl-grid">
+      <div class="cl-item critical">
+        <div class="cl-item-title">Session / JWT Authentication</div>
+        <div class="cl-item-desc">No session middleware exists. After OAuth, the backend has no way to identify who is making API requests. Every route trusts a hardcoded local user.</div>
+      </div>
+      <div class="cl-item critical">
+        <div class="cl-item-title">Auth Middleware on API Routes</div>
+        <div class="cl-item-desc">Calendar and AI routes are completely unprotected — anyone who can reach the server can read/write any user's events.</div>
+      </div>
+      <div class="cl-item critical">
+        <div class="cl-item-title">HTTPS / TLS Termination</div>
+        <div class="cl-item-desc">Server currently runs plain HTTP. OAuth tokens and calendar data travel unencrypted. Need a reverse proxy (Nginx, Caddy) or platform TLS.</div>
+      </div>
+      <div class="cl-item critical">
+        <div class="cl-item-title">Google OAuth Redirect URI</div>
+        <div class="cl-item-desc">GOOGLE_REDIRECT_URI is hardcoded to localhost:3001. Must be updated to production domain in both .env AND Google Cloud Console.</div>
+      </div>
+      <div class="cl-item critical">
+        <div class="cl-item-title">Secrets Out of .env Into Vault</div>
+        <div class="cl-item-desc">Real GOOGLE_CLIENT_SECRET and API keys are in a plain .env file. Use platform secrets manager (Railway vars, Fly secrets, Vercel env) in production.</div>
+      </div>
+      <div class="cl-item critical">
+        <div class="cl-item-title">SQLite → PostgreSQL Migration</div>
+        <div class="cl-item-desc">SQLite is single-file, not network-accessible, and has no connection pooling. Production needs PostgreSQL (Supabase or Neon recommended).</div>
+      </div>
+      <div class="cl-item critical">
+        <div class="cl-item-title">CORS Origin Lockdown</div>
+        <div class="cl-item-desc">CORS must be restricted to the production frontend domain, not wildcard. Currently permissive for local dev.</div>
+      </div>
+      <div class="cl-item critical">
+        <div class="cl-item-title">Refresh Token Rotation</div>
+        <div class="cl-item-desc">Access tokens expire in 1 hour. Need middleware to check expires_at and use refresh_token to get a new one automatically.</div>
+      </div>
+    </div>
+
+    <div class="cl-section-title">🟡 Important — Needed soon after launch</div>
+    <div class="cl-grid">
+      <div class="cl-item important">
+        <div class="cl-item-title">API Rate Limiting</div>
+        <div class="cl-item-desc">No rate limiting on AI endpoints. A looping client could rack up hundreds of OpenAI API calls. Add express-rate-limit on /api/ai routes.</div>
+      </div>
+      <div class="cl-item important">
+        <div class="cl-item-title">Input Validation / Sanitization</div>
+        <div class="cl-item-desc">API body parameters go directly into SQL and Google API calls with no validation. Add Zod or express-validator.</div>
+      </div>
+      <div class="cl-item important">
+        <div class="cl-item-title">Error Handling Middleware</div>
+        <div class="cl-item-desc">Unhandled errors will expose stack traces to clients. Add a global Express error handler that logs internally and returns generic messages.</div>
+      </div>
+      <div class="cl-item important">
+        <div class="cl-item-title">Structured Logging</div>
+        <div class="cl-item-desc">No logging whatsoever. Add pino or winston to log requests, errors, and sync events with timestamps for debugging in production.</div>
+      </div>
+      <div class="cl-item important">
+        <div class="cl-item-title">CI/CD Pipeline</div>
+        <div class="cl-item-desc">No automated build or deploy. Add GitHub Actions to run lint + build on every push, and auto-deploy to Railway/Fly on merge to main.</div>
+      </div>
+      <div class="cl-item important">
+        <div class="cl-item-title">Frontend Session Persistence</div>
+        <div class="cl-item-desc">isAuthenticated state lives only in React memory — lost on page refresh. Need to check auth status via a GET /api/auth/me endpoint on load.</div>
+      </div>
+      <div class="cl-item important">
+        <div class="cl-item-title">Database Backup Strategy</div>
+        <div class="cl-item-desc">No backups configured. PostgreSQL providers (Supabase, Neon) have point-in-time recovery built in — enable it from day one.</div>
+      </div>
+    </div>
+
+    <div class="cl-section-title">🔵 Nice-to-have — Polish for a production-grade app</div>
+    <div class="cl-grid">
+      <div class="cl-item nice">
+        <div class="cl-item-title">Test Suite (Vitest)</div>
+        <div class="cl-item-desc">Zero tests currently. At minimum, unit-test the calendar sync transform, AI tool execution switchboard, and OAuth credential upsert logic.</div>
+      </div>
+      <div class="cl-item nice">
+        <div class="cl-item-title">Error Monitoring (Sentry)</div>
+        <div class="cl-item-desc">Add Sentry to both frontend (React ErrorBoundary) and backend to get notified of production errors in real-time.</div>
+      </div>
+      <div class="cl-item nice">
+        <div class="cl-item-title">Multi-AI Provider Abstraction</div>
+        <div class="cl-item-desc">Currently uses OpenAI. Wrap LLM calls in a provider interface so you can swap in Anthropic Claude, or route by capability, without changing app code.</div>
+      </div>
+      <div class="cl-item nice">
+        <div class="cl-item-title">Google Calendar Webhook (Push)</div>
+        <div class="cl-item-desc">Currently sync is pull-only (manual or page-load). Use Google Calendar push notifications (webhooks) for real-time sync without polling.</div>
+      </div>
+      <div class="cl-item nice">
+        <div class="cl-item-title">Dockerfile + Container Deployment</div>
+        <div class="cl-item-desc">No Dockerfile. Containerizing the app simplifies deployment to Railway, Fly, Render, or any cloud provider.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+ * ================================================================
+ *  ARCHITECTURE DATA
+ *  Edit this section to update the diagram without touching the
+ *  rendering or interaction code below.
+ *
+ *  STATUS VALUES:  'built' | 'partial' | 'missing' | 'external' | 'future'
+ *  NODE TYPES:     'group-header' | 'component' | 'route' | 'db-table'
+ * ================================================================
+ */
+
+// ── NODES ────────────────────────────────────────────────────────
+// x, y = top-left corner; w = width; h = height
+const NODES = [
+
+  /* ─── FRONTEND ─── */
+  {
+    id: 'react-app', label: 'App.tsx', sublabel: 'React 19 · Global State Container',
+    status: 'built', x: 160, y: 60, w: 210, h: 52,
+    file: 'src/App.tsx',
+    description: 'Root component that owns all global state. Handles OAuth callback detection, event fetching, and passes props down to all page views.',
+    details: {
+      responsibilities: [
+        'Global state: events[], selectedDate, isAuthenticated, settings',
+        'localStorage persistence for user settings (ra1nbow-settings)',
+        'Detects ?login=success in URL after OAuth callback',
+        'Orchestrates fetchEvents() and fetchJourney() on mount',
+        'Routes between: orbit | rainbow | balloon | journey modes',
+        'Handles AI action responses and refreshes event data'
+      ],
+      prodGaps: [
+        { level: 'critical',  title: 'No auth check on load', desc: 'isAuthenticated only set when ?login=success is in URL — lost on page refresh. Add GET /api/auth/me.' },
+        { level: 'critical',  title: 'Auth state in memory only', desc: 'Clearing cookies or reloading breaks auth without a session/cookie check.' }
+      ]
+    }
+  },
+
+  {
+    id: 'daywheel', label: 'DayWheel', sublabel: '24-hour orbital calendar',
+    status: 'built', x: 30, y: 175, w: 155, h: 44,
+    file: 'src/components/DayWheel.tsx (1025 lines)',
+    description: 'The flagship UI — an SVG ring calendar showing 24 hours. Supports drag-to-move, drag-to-resize, current time needle, and touch gestures.',
+    details: {
+      responsibilities: [
+        '24-hour SVG ring (RING_RADIUS=180, RING_THICKNESS=80)',
+        'Drag events to reschedule, resize edges to change duration',
+        'Current time indicator with pulse animation',
+        'Touch + mouse support for mobile and desktop',
+        'Overflow day marker for multi-day events',
+        'Sleep zone (midnight arc) for visual context'
+      ]
+    }
+  },
+
+  {
+    id: 'taskspage', label: 'TasksPage', sublabel: 'Balloon task management',
+    status: 'built', x: 205, y: 175, w: 155, h: 44,
+    file: 'src/components/TasksPage.tsx (372 lines)',
+    description: 'Task management view where each task is rendered as a floating balloon. Framer Motion animations for task lifecycle.'
+  },
+
+  {
+    id: 'journeypage', label: 'JourneyPage', sublabel: 'Retrospective timeline',
+    status: 'built', x: 380, y: 175, w: 155, h: 44,
+    file: 'src/components/JourneyPage.tsx (458 lines)',
+    description: 'Shows completed and cancelled events as a narrative timeline. Reads from GET /api/calendar/journey?date=YYYY-MM-DD.'
+  },
+
+  {
+    id: 'settings', label: 'Settings', sublabel: 'localStorage · Draggable sheet',
+    status: 'built', x: 30, y: 270, w: 155, h: 44,
+    file: 'src/components/Settings.tsx (185 lines)',
+    description: 'Spring-physics draggable settings sheet. Persists timeFormat (12h/24h), darkMode, timeZone, and markerResolution to localStorage under key ra1nbow-settings.'
+  },
+
+  {
+    id: 'voicebtn', label: 'VoiceButton', sublabel: 'Audio capture → AI',
+    status: 'built', x: 205, y: 270, w: 155, h: 44,
+    file: 'src/components/VoiceButton.tsx',
+    description: 'Records audio from the microphone, uploads to POST /api/ai/transcribe (Whisper), then sends the transcript to POST /api/ai/execute for agentic calendar manipulation.',
+    details: {
+      responsibilities: [
+        'MediaRecorder API for browser audio capture',
+        'Uploads audio blob to /api/ai/transcribe',
+        'Sends transcript to /api/ai/execute',
+        'Shows AI response toast via aiResponse state'
+      ],
+      prodGaps: [
+        { level: 'important', title: 'No auth on AI routes', desc: 'Anyone who can reach the server can send voice commands.' }
+      ]
+    }
+  },
+
+  {
+    id: 'eventforms', label: 'Event Forms', sublabel: 'Creator · Editor · Delete',
+    status: 'built', x: 380, y: 270, w: 155, h: 44,
+    file: 'src/components/EventCreator.tsx, EventEditor.tsx, DeleteConfirm.tsx',
+    description: 'Modal forms for creating, editing, and deleting calendar events. POST/PUT/DELETE to the calendar API routes.'
+  },
+
+  {
+    id: 'errorboundary', label: 'ErrorBoundary', sublabel: 'React error fallback',
+    status: 'built', x: 205, y: 360, w: 155, h: 40,
+    file: 'src/components/ErrorBoundary.tsx',
+    description: 'Catches React render errors and shows a fallback UI. Add Sentry.captureException() here for production error reporting.'
+  },
+
+  /* ─── BACKEND ─── */
+  {
+    id: 'express', label: 'Express Server', sublabel: 'Express 5 · Port 3001 · tsx watch',
+    status: 'partial', x: 690, y: 60, w: 210, h: 52,
+    file: 'server/index.ts',
+    description: 'Main Express 5 server entry point. Mounts all routers, configures CORS, and serves the Vite-built frontend in production mode.',
+    details: {
+      responsibilities: [
+        'Mounts /api/auth, /api/calendar, /api/ai routers',
+        'Configures CORS (needs production origin lockdown)',
+        'Runs on PORT env var (default 3001)',
+        'No session middleware — routes are unprotected',
+        'No global error handler — errors expose stack traces',
+        'No rate limiting middleware'
+      ],
+      prodGaps: [
+        { level: 'critical',  title: 'No session / JWT middleware', desc: 'Add express-session + connect-pg-simple, or use JWT with httpOnly cookies.' },
+        { level: 'critical',  title: 'CORS origin must be restricted', desc: 'Set origin to production frontend domain, not wildcard.' },
+        { level: 'important', title: 'No global error handler', desc: 'Add app.use((err, req, res, next) => ...) at the bottom of index.ts.' },
+        { level: 'important', title: 'No structured logging', desc: 'Add pino-http middleware for request/response logging.' }
+      ]
+    }
+  },
+
+  {
+    id: 'cors', label: 'CORS', sublabel: 'cors@2.8.6',
+    status: 'partial', x: 590, y: 175, w: 130, h: 40,
+    file: 'server/index.ts',
+    description: 'CORS middleware configured for local development. Must be locked to the production domain before deployment.',
+    details: {
+      prodGaps: [
+        { level: 'critical', title: 'Origin is too permissive', desc: 'Change to: cors({ origin: process.env.ALLOWED_ORIGIN, credentials: true })' }
+      ]
+    }
+  },
+
+  {
+    id: 'session-mw', label: '⚠ Session Middleware', sublabel: 'NOT BUILT — critical gap',
+    status: 'missing', x: 740, y: 175, w: 160, h: 40,
+    file: 'server/index.ts (needs to be added)',
+    description: 'No session or JWT middleware exists. This is the most critical production gap — without it, every API route is unprotected and trusts a hardcoded local user.',
+    details: {
+      responsibilities: [
+        'Issue a session cookie or JWT after OAuth success',
+        'Verify session/JWT on every protected API request',
+        'Attach req.user to the request context',
+        'Handle session expiry and re-auth flow'
+      ],
+      prodGaps: [
+        { level: 'critical', title: 'Build this before any production deployment', desc: 'Options: express-session + Postgres store, or stateless JWT with httpOnly cookies. JWT recommended for serverless.' }
+      ]
+    }
+  },
+
+  {
+    id: 'ratelimit', label: '⚠ Rate Limiter', sublabel: 'NOT BUILT',
+    status: 'missing', x: 910, y: 175, w: 140, h: 40,
+    file: 'server/index.ts (needs to be added)',
+    description: 'No rate limiting exists. AI routes especially need limits since every call incurs OpenAI API costs.',
+    details: {
+      prodGaps: [
+        { level: 'important', title: 'Add express-rate-limit', desc: 'At minimum: 10 req/min on /api/ai routes, 60 req/min on calendar routes.' }
+      ]
+    }
+  },
+
+  {
+    id: 'auth-router', label: 'Auth Router', sublabel: '/api/auth · Google OAuth2',
+    status: 'partial', x: 590, y: 270, w: 145, h: 52,
+    file: 'server/auth.ts',
+    description: 'Implements Google OAuth2 flow. Handles the authorization redirect and the callback that exchanges the code for tokens.',
+    details: {
+      routes: [
+        { method: 'GET', path: '/api/auth/google', desc: 'Redirect to Google consent' },
+        { method: 'GET', path: '/api/auth/google/callback', desc: 'Exchange code for tokens' }
+      ],
+      responsibilities: [
+        'Requests scopes: email, profile, calendar',
+        'Forces access_type=offline to get refresh token',
+        'Upserts user in DB (atomic transaction)',
+        'Stores access_token, refresh_token, expires_at',
+        'Redirects to /?login=success on success'
+      ],
+      prodGaps: [
+        { level: 'critical',  title: 'GOOGLE_REDIRECT_URI points to localhost', desc: 'Must update to production URL in .env AND Google Cloud Console.' },
+        { level: 'critical',  title: 'No token-refresh middleware', desc: 'Access tokens expire in 1 hour. Need to auto-refresh using refresh_token.' },
+        { level: 'missing',   title: 'No GET /api/auth/me endpoint', desc: 'Frontend cannot check auth status on page load.' }
+      ]
+    }
+  },
+
+  {
+    id: 'calendar-router', label: 'Calendar Router', sublabel: '/api/calendar · 8 endpoints',
+    status: 'partial', x: 750, y: 270, w: 155, h: 52,
+    file: 'server/calendar.ts',
+    description: 'All calendar CRUD operations. Reads/writes local SQLite and syncs bidirectionally with Google Calendar API.',
+    details: {
+      routes: [
+        { method: 'POST',   path: '/api/calendar/sync',                desc: 'Pull from Google → SQLite' },
+        { method: 'GET',    path: '/api/calendar/events',              desc: 'Get events for user' },
+        { method: 'GET',    path: '/api/calendar/journey',             desc: 'Completed events timeline' },
+        { method: 'POST',   path: '/api/calendar/events',              desc: 'Create event' },
+        { method: 'PUT',    path: '/api/calendar/events/:id',          desc: 'Update event' },
+        { method: 'DELETE', path: '/api/calendar/events/:id',          desc: 'Soft-cancel event' },
+        { method: 'POST',   path: '/api/calendar/events/:id/complete', desc: 'Mark complete' },
+        { method: 'POST',   path: '/api/calendar/events/:id/restore',  desc: 'Restore event' }
+      ],
+      responsibilities: [
+        'Syncs 7 days past + 30 days future from Google',
+        'Assigns rainbow colors deterministically by event ID hash',
+        'Two-way sync: local changes pushed to Google Calendar',
+        'Soft-delete (status=cancelled) for delete',
+        'Checkmark prefix on Google event when completed'
+      ],
+      prodGaps: [
+        { level: 'critical',  title: 'Routes have no auth guard', desc: 'Any unauthenticated client can read/write all events.' },
+        { level: 'important', title: 'No input validation', desc: 'Add Zod schemas for request bodies.' },
+        { level: 'important', title: 'No Google Calendar webhook support', desc: 'Sync is pull-only. Add push notifications for real-time updates.' }
+      ]
+    }
+  },
+
+  {
+    id: 'ai-router', label: 'AI Router', sublabel: '/api/ai · Whisper + GPT-4o-mini',
+    status: 'partial', x: 920, y: 270, w: 145, h: 52,
+    file: 'server/ai.ts',
+    description: 'Voice transcription and agentic calendar control. Sends audio to OpenAI Whisper, then uses GPT-4o-mini with custom tools to execute calendar mutations.',
+    details: {
+      routes: [
+        { method: 'POST', path: '/api/ai/transcribe', desc: 'Audio → transcript (Whisper)' },
+        { method: 'POST', path: '/api/ai/execute',    desc: 'Transcript → calendar action' }
+      ],
+      responsibilities: [
+        'Multer handles multipart audio file upload',
+        '60s LLM context cache to reduce token usage',
+        'Sandboxed tools: reschedule, update_details, complete',
+        'Mock mode when OPENAI_API_KEY not set',
+        'Cleans up temp audio file after transcription'
+      ],
+      prodGaps: [
+        { level: 'critical',  title: 'No auth guard — anyone can run AI commands', desc: 'High risk: AI can mutate calendar data without any auth check.' },
+        { level: 'important', title: 'No rate limiting on AI endpoints', desc: 'Each call costs money. 10 req/min limit minimum.' },
+        { level: 'important', title: 'AI provider hardcoded to OpenAI', desc: 'Wrap in an AI provider interface to support Anthropic, Gemini, etc.' }
+      ]
+    }
+  },
+
+  {
+    id: 'logger', label: '⚠ Logging / Monitoring', sublabel: 'NOT BUILT',
+    status: 'missing', x: 750, y: 375, w: 165, h: 40,
+    file: 'server/index.ts (needs to be added)',
+    description: 'No logging or monitoring exists. In production you need to know when syncs fail, when AI calls error, and when OAuth refreshes break.',
+    details: {
+      prodGaps: [
+        { level: 'important', title: 'Add pino + pino-http', desc: 'Structured JSON logging with request IDs for production debugging.' },
+        { level: 'nice',      title: 'Add Sentry for error tracking', desc: 'Real-time error alerts and stack traces.' }
+      ]
+    }
+  },
+
+  /* ─── DATABASE ─── */
+  {
+    id: 'sqlite', label: 'SQLite', sublabel: 'better-sqlite3 · WAL mode · Local file',
+    status: 'partial', x: 615, y: 485, w: 165, h: 52,
+    file: 'server/db.ts · database.sqlite',
+    description: 'SQLite with Write-Ahead Logging. Fast for local dev, but not suitable for production: single-file, no connection pooling, not network-accessible.',
+    details: {
+      schema: [
+        { name: 'users',             cols: 'id, email, created_at' },
+        { name: 'oauth_credentials', cols: 'id, user_id, provider, access_token, refresh_token, expires_at' },
+        { name: 'calendars',         cols: 'id, user_id, provider_calendar_id, sync_token, channel_id' },
+        { name: 'events',            cols: 'id, calendar_id, provider_event_id, title, start_time, end_time, startH, endH, date, color, description, status' },
+        { name: 'tasks',             cols: 'id, user_id, title, duration_minutes, completed, due_date' }
+      ],
+      prodGaps: [
+        { level: 'critical', title: 'Migrate to PostgreSQL before production', desc: 'Use Supabase (free tier) or Neon (serverless, free tier). The schema is small and straightforward to migrate.' },
+        { level: 'important', title: 'Add proper migration tooling', desc: 'Replace manual ALTER TABLE checks with a migration library like node-pg-migrate or Prisma Migrate.' }
+      ]
+    }
+  },
+
+  {
+    id: 'postgres', label: 'PostgreSQL', sublabel: 'Supabase or Neon · Planned',
+    status: 'future', x: 800, y: 485, w: 165, h: 52,
+    file: 'Not yet implemented',
+    description: 'Planned migration target. Supabase and Neon both offer free tiers, connection pooling, and point-in-time recovery. Schema is small — migration is straightforward.',
+    details: {
+      responsibilities: [
+        'Same schema as SQLite — minimal changes needed',
+        'Replace better-sqlite3 with pg or @vercel/postgres',
+        'Switch db.ts to use async/await (not sync)',
+        'Enable connection pooling (PgBouncer via Supabase)',
+        'Use Supabase Row-Level Security for extra auth layer'
+      ]
+    }
+  },
+
+  /* ─── EXTERNAL SERVICES ─── */
+  {
+    id: 'google-oauth', label: 'Google OAuth 2.0', sublabel: 'Identity + Calendar scope',
+    status: 'external', x: 1180, y: 80, w: 195, h: 52,
+    file: 'googleapis@171 · GOOGLE_CLIENT_ID / SECRET',
+    description: 'Google Identity Platform used for user authentication and to obtain a refresh token with calendar access scope.',
+    details: {
+      responsibilities: [
+        'Verifies user identity (email, Google user ID)',
+        'Issues access_token + refresh_token',
+        'Scopes: userinfo.email, userinfo.profile, calendar',
+        'Callback: GET /api/auth/google/callback'
+      ],
+      prodGaps: [
+        { level: 'critical', title: 'Redirect URI must be updated', desc: 'Google Cloud Console → Credentials → Authorized redirect URIs. Add production URL.' },
+        { level: 'important', title: 'Verify OAuth app for production', desc: 'Google requires verification for apps requesting sensitive scopes (calendar). Submit for review before public launch.' }
+      ]
+    }
+  },
+
+  {
+    id: 'google-cal', label: 'Google Calendar API', sublabel: 'v3 · Bidirectional sync',
+    status: 'external', x: 1180, y: 200, w: 195, h: 52,
+    file: 'googleapis@171 · calendar.ts',
+    description: 'Used for syncing events from Google to local SQLite and pushing local changes back to Google Calendar.',
+    details: {
+      responsibilities: [
+        'List events: 7 days past, 30 days future',
+        'Create, patch, delete events',
+        'Excludes all-day events (only dateTime events)',
+        'Color mapping via Google\'s colorId field',
+        'Future: push notifications via channels/watch'
+      ]
+    }
+  },
+
+  {
+    id: 'openai-whisper', label: 'OpenAI Whisper', sublabel: 'whisper-1 · Speech-to-Text',
+    status: 'external', x: 1180, y: 320, w: 195, h: 52,
+    file: 'openai@6 · OPENAI_API_KEY',
+    description: 'Transcribes audio recordings from VoiceButton into text. The transcript is then passed to GPT-4o-mini for calendar intent parsing.',
+    details: {
+      responsibilities: [
+        'Model: whisper-1',
+        'Input: audio file from Multer temp upload',
+        'Output: transcript string',
+        'Mock mode when OPENAI_API_KEY not set'
+      ]
+    }
+  },
+
+  {
+    id: 'gpt4mini', label: 'GPT-4o-mini', sublabel: 'Agentic calendar control',
+    status: 'external', x: 1180, y: 420, w: 195, h: 52,
+    file: 'openai@6 · ai.ts',
+    description: 'Parses voice transcripts into structured calendar actions using function calling (tool_use). Executes sandboxed tools: reschedule, update, complete.',
+    details: {
+      responsibilities: [
+        'System prompt: current date + compressed 14-day schedule',
+        'Tools: reschedule_calendar_event, update_task_details, complete_event',
+        'Context cache: 60s to minimize token usage',
+        'Returns structured tool_calls for execution by switchboard',
+        'Model: gpt-4o-mini (cost-optimized)'
+      ],
+      prodGaps: [
+        { level: 'important', title: 'Provider is hardcoded to OpenAI', desc: 'User wants multi-provider support. Wrap in an AI provider interface.' }
+      ]
+    }
+  },
+
+  {
+    id: 'anthropic', label: 'Anthropic Claude', sublabel: 'Planned · claude-sonnet-4-x',
+    status: 'future', x: 1420, y: 420, w: 175, h: 52,
+    file: 'Not yet implemented',
+    description: 'Future AI provider. The architecture should abstract the AI layer so either OpenAI or Anthropic can be used depending on cost, capability, or user preference.',
+    details: {
+      responsibilities: [
+        'Replace/complement GPT-4o-mini for intent parsing',
+        'Use Anthropic tool_use for calendar tool execution',
+        'Support model: claude-sonnet-4-6 or claude-haiku-4-5',
+        'Route by task: voice parsing vs. complex reasoning'
+      ]
+    }
+  },
+
+  {
+    id: 'github', label: 'GitHub', sublabel: 'Code sync · Daily push',
+    status: 'external', x: 1420, y: 200, w: 175, h: 44,
+    file: 'Remote origin — synced daily',
+    description: 'Code is synced to GitHub daily. No CI/CD pipeline is configured yet. GitHub Actions would enable automated testing and deployment on push.',
+    details: {
+      prodGaps: [
+        { level: 'important', title: 'No CI/CD pipeline', desc: 'Add .github/workflows/deploy.yml to lint + build + deploy on push to main.' }
+      ]
+    }
+  }
+];
+
+// ── CONNECTIONS ───────────────────────────────────────────────────
+// type: 'built' | 'partial' | 'missing' | 'external' | 'future' | 'muted'
+// from/to: node IDs; label: short text shown on line
+// anchor: 'right'|'left'|'top'|'bottom' for source and target
+const CONNECTIONS = [
+  // Frontend ↔ Backend
+  { from: 'react-app',   to: 'express',        type: 'built',    label: 'REST API',    fromAnchor: 'right', toAnchor: 'left' },
+  { from: 'voicebtn',    to: 'express',         type: 'built',    label: 'multipart',   fromAnchor: 'right', toAnchor: 'left' },
+
+  // Frontend → Auth
+  { from: 'react-app',   to: 'auth-router',    type: 'built',    label: 'OAuth start', fromAnchor: 'bottom', toAnchor: 'top' },
+
+  // Express → Middleware / Routers
+  { from: 'express',     to: 'cors',           type: 'partial',  label: '',            fromAnchor: 'bottom', toAnchor: 'top' },
+  { from: 'express',     to: 'session-mw',     type: 'missing',  label: '⚠ missing',   fromAnchor: 'bottom', toAnchor: 'top' },
+  { from: 'express',     to: 'ratelimit',      type: 'missing',  label: '⚠ missing',   fromAnchor: 'bottom', toAnchor: 'top' },
+  { from: 'express',     to: 'auth-router',    type: 'built',    label: '',            fromAnchor: 'bottom', toAnchor: 'top' },
+  { from: 'express',     to: 'calendar-router',type: 'built',    label: '',            fromAnchor: 'bottom', toAnchor: 'top' },
+  { from: 'express',     to: 'ai-router',      type: 'built',    label: '',            fromAnchor: 'bottom', toAnchor: 'top' },
+  { from: 'express',     to: 'logger',         type: 'missing',  label: '⚠ missing',   fromAnchor: 'bottom', toAnchor: 'top' },
+
+  // Routers → Database
+  { from: 'auth-router',    to: 'sqlite',      type: 'built',    label: 'users, creds',fromAnchor: 'bottom', toAnchor: 'top' },
+  { from: 'calendar-router',to: 'sqlite',      type: 'built',    label: 'events',      fromAnchor: 'bottom', toAnchor: 'top' },
+  { from: 'ai-router',      to: 'sqlite',      type: 'built',    label: 'read+write',  fromAnchor: 'bottom', toAnchor: 'top' },
+
+  // Database migration
+  { from: 'sqlite',      to: 'postgres',       type: 'future',   label: 'planned migration', fromAnchor: 'right', toAnchor: 'left' },
+
+  // Backend → External Services
+  { from: 'auth-router',     to: 'google-oauth',  type: 'external', label: 'OAuth2 flow', fromAnchor: 'right', toAnchor: 'left' },
+  { from: 'calendar-router', to: 'google-cal',    type: 'external', label: 'sync',        fromAnchor: 'right', toAnchor: 'left' },
+  { from: 'ai-router',       to: 'openai-whisper',type: 'external', label: 'audio file',  fromAnchor: 'right', toAnchor: 'left' },
+  { from: 'ai-router',       to: 'gpt4mini',      type: 'external', label: 'tool_use',    fromAnchor: 'right', toAnchor: 'left' },
+
+  // Callback from Google back to backend
+  { from: 'google-oauth',    to: 'auth-router',   type: 'external', label: 'callback redirect', fromAnchor: 'left', toAnchor: 'right' },
+
+  // Future provider
+  { from: 'ai-router',       to: 'anthropic',     type: 'future',   label: 'future',      fromAnchor: 'right', toAnchor: 'left' }
+];
+
+// ── ZONE BACKGROUNDS ─────────────────────────────────────────────
+const ZONES = [
+  { id: 'fe-zone',  label: 'BROWSER / FRONTEND',  x: 10,   y: 20,  w: 555, h: 430, color: '#0d1f3c' },
+  { id: 'be-zone',  label: 'EXPRESS BACKEND',       x: 570,  y: 20,  w: 510, h: 430, color: '#1a0d2e' },
+  { id: 'db-zone',  label: 'DATA LAYER',            x: 570,  y: 465, w: 510, h: 110, color: '#0d1f1a' },
+  { id: 'ext-zone', label: 'EXTERNAL SERVICES',     x: 1160, y: 20,  w: 455, h: 510, color: '#0d1022' }
+];
+
+/*
+ * ================================================================
+ *  RENDERING ENGINE — You generally don't need to edit below here.
+ *  Change NODES / CONNECTIONS / ZONES above to update the diagram.
+ * ================================================================
+ */
+
+// Build a lookup map for quick access
+const nodeMap = {};
+NODES.forEach(n => nodeMap[n.id] = n);
+
+// Pan/zoom state
+let tx = 0, ty = 0, scale = 1;
+let dragging = false, dragStart = null;
+let selectedNodeId = null;
+
+// Helper: get anchor point of a node
+function getAnchor(node, side) {
+  const cx = node.x + node.w / 2;
+  const cy = node.y + node.h / 2;
+  switch (side) {
+    case 'right':  return { x: node.x + node.w, y: cy };
+    case 'left':   return { x: node.x,           y: cy };
+    case 'top':    return { x: cx,               y: node.y };
+    case 'bottom': return { x: cx,               y: node.y + node.h };
+    default:       return { x: cx,               y: cy };
+  }
+}
+
+// Helper: cubic bezier path between two anchors
+function curvePath(p1, p2, fa, ta) {
+  const dx = Math.abs(p2.x - p1.x) * 0.5;
+  const dy = Math.abs(p2.y - p1.y) * 0.5;
+  let c1x = p1.x, c1y = p1.y, c2x = p2.x, c2y = p2.y;
+
+  if (fa === 'right' || fa === 'left') {
+    c1x = p1.x + (fa === 'right' ? dx : -dx);
+    c2x = p2.x + (ta === 'right' ? dx : ta === 'left' ? -dx : 0);
+    c2y = p2.y + (ta === 'bottom' ? dy : ta === 'top' ? -dy : 0);
+  } else {
+    c1y = p1.y + (fa === 'bottom' ? dy : -dy);
+    c2y = p2.y + (ta === 'bottom' ? dy : ta === 'top' ? -dy : 0);
+    c2x = p2.x + (ta === 'right' ? dx : ta === 'left' ? -dx : 0);
+  }
+  return `M ${p1.x} ${p1.y} C ${c1x} ${c1y} ${c2x} ${c2y} ${p2.x} ${p2.y}`;
+}
+
+// Colors per status
+const STATUS_COLORS = {
+  built:    { stroke: '#22c55e', fill: '#071a0e', text: '#86efac', sub: '#4ade80', border: '#166534' },
+  partial:  { stroke: '#f59e0b', fill: '#1a1100', text: '#fcd34d', sub: '#fbbf24', border: '#854d0e' },
+  missing:  { stroke: '#ef4444', fill: '#1a0505', text: '#fca5a5', sub: '#f87171', border: '#7f1d1d' },
+  external: { stroke: '#6366f1', fill: '#0a0b22', text: '#a5b4fc', sub: '#818cf8', border: '#3730a3' },
+  future:   { stroke: '#a78bfa', fill: '#0e0a22', text: '#c4b5fd', sub: '#a78bfa', border: '#5b21b6' }
+};
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function el(tag, attrs, text) {
+  const e = document.createElementNS(SVG_NS, tag);
+  if (attrs) Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function renderDiagram() {
+  const g = document.getElementById('view-group');
+  g.innerHTML = '';
+
+  // ── Zone backgrounds
+  ZONES.forEach(z => {
+    const zg = el('g', { id: z.id });
+    zg.appendChild(el('rect', {
+      x: z.x, y: z.y, width: z.w, height: z.h,
+      fill: z.color, stroke: '#1c2540', 'stroke-width': '1',
+      rx: '12', opacity: '0.5'
+    }));
+    zg.appendChild(el('text', {
+      x: z.x + 14, y: z.y + 18,
+      fill: '#4b5573', 'font-size': '9',
+      'font-weight': '700', 'letter-spacing': '0.12em',
+      'font-family': 'sans-serif'
+    }, z.label));
+    g.appendChild(zg);
+  });
+
+  // ── Connections (drawn before nodes so nodes appear on top)
+  const connG = el('g', { id: 'connections' });
+  CONNECTIONS.forEach((conn, i) => {
+    const src = nodeMap[conn.from];
+    const dst = nodeMap[conn.to];
+    if (!src || !dst) return;
+
+    const p1 = getAnchor(src, conn.fromAnchor);
+    const p2 = getAnchor(dst, conn.toAnchor);
+    const d  = curvePath(p1, p2, conn.fromAnchor, conn.toAnchor);
+
+    const dashMap = { missing: '5,3', future: '6,3' };
+    const pathEl = el('path', {
+      d,
+      fill: 'none',
+      stroke: STATUS_COLORS[conn.type]?.stroke || '#4b5573',
+      'stroke-width': '1.5',
+      opacity: '0.55',
+      'stroke-dasharray': dashMap[conn.type] || 'none',
+      'marker-end': `url(#arrow-${conn.type})`
+    });
+    connG.appendChild(pathEl);
+
+    // Label on connection (only if non-empty)
+    if (conn.label) {
+      const mx = (p1.x + p2.x) / 2;
+      const my = (p1.y + p2.y) / 2;
+      const bg = el('rect', {
+        x: mx - 24, y: my - 8,
+        width: '48', height: '12',
+        fill: '#07090f', rx: '3'
+      });
+      const txt = el('text', {
+        x: mx, y: my + 1,
+        fill: '#4b5573', 'font-size': '8',
+        'text-anchor': 'middle', 'dominant-baseline': 'middle',
+        'font-family': 'sans-serif'
+      }, conn.label);
+      connG.appendChild(bg);
+      connG.appendChild(txt);
+    }
+  });
+  g.appendChild(connG);
+
+  // ── Nodes
+  const nodesG = el('g', { id: 'nodes' });
+  NODES.forEach(node => {
+    const sc = STATUS_COLORS[node.status] || STATUS_COLORS.built;
+    const ng = el('g', {
+      id: `node-${node.id}`,
+      class: 'node-group',
+      cursor: 'pointer'
+    });
+
+    // Background rect
+    const isDashed = node.status === 'future';
+    const bg = el('rect', {
+      class: 'node-bg',
+      x: node.x, y: node.y,
+      width: node.w, height: node.h,
+      fill: sc.fill, stroke: sc.stroke,
+      'stroke-width': '1.5',
+      rx: '7', ry: '7',
+      'stroke-dasharray': isDashed ? '6,3' : 'none',
+      style: 'transition: filter 0.15s;'
+    });
+    ng.appendChild(bg);
+
+    // Status indicator dot (left side)
+    ng.appendChild(el('circle', {
+      cx: node.x + 10, cy: node.y + node.h / 2,
+      r: '3.5',
+      fill: sc.stroke, opacity: '0.85'
+    }));
+
+    // Label text
+    ng.appendChild(el('text', {
+      x: node.x + 22, y: node.y + (node.sublabel ? node.h / 2 - 5 : node.h / 2 + 1),
+      fill: sc.text, 'font-size': '12',
+      'font-weight': '700', 'font-family': 'sans-serif',
+      'dominant-baseline': 'middle'
+    }, node.label));
+
+    // Sublabel text
+    if (node.sublabel) {
+      ng.appendChild(el('text', {
+        x: node.x + 22, y: node.y + node.h / 2 + 9,
+        fill: sc.sub, 'font-size': '9',
+        'font-family': 'sans-serif',
+        'dominant-baseline': 'middle',
+        opacity: '0.8'
+      }, node.sublabel));
+    }
+
+    ng.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectNode(node.id);
+    });
+
+    nodesG.appendChild(ng);
+  });
+  g.appendChild(nodesG);
+}
+
+// ── PANEL RENDERING ───────────────────────────────────────────────
+function selectNode(id) {
+  // Deselect previous
+  if (selectedNodeId) {
+    const prev = document.getElementById(`node-${selectedNodeId}`);
+    if (prev) prev.classList.remove('selected');
+  }
+  selectedNodeId = id;
+  const ng = document.getElementById(`node-${id}`);
+  if (ng) ng.classList.add('selected');
+
+  const node = nodeMap[id];
+  if (!node) return;
+
+  document.getElementById('panel-title').textContent = node.label;
+  document.getElementById('panel-sub').textContent = node.file || '';
+
+  const sc = STATUS_COLORS[node.status];
+  const body = document.getElementById('panel-body');
+  body.innerHTML = '';
+
+  // Status
+  const statusSec = document.createElement('div');
+  statusSec.className = 'psec';
+  statusSec.innerHTML = `
+    <h3>Status</h3>
+    <span class="status-pill ${node.status}">${node.status.toUpperCase()}</span>
+  `;
+  body.appendChild(statusSec);
+
+  // Description
+  if (node.description) {
+    const descSec = document.createElement('div');
+    descSec.className = 'psec';
+    descSec.innerHTML = `<h3>Description</h3><p class="ptext">${node.description}</p>`;
+    body.appendChild(descSec);
+  }
+
+  // Responsibilities / Key details
+  if (node.details?.responsibilities) {
+    const sec = document.createElement('div');
+    sec.className = 'psec';
+    sec.innerHTML = `<h3>Responsibilities</h3><ul class="blist">${
+      node.details.responsibilities.map(r => `<li>${r}</li>`).join('')
+    }</ul>`;
+    body.appendChild(sec);
+  }
+
+  // Routes
+  if (node.details?.routes) {
+    const sec = document.createElement('div');
+    sec.className = 'psec';
+    sec.innerHTML = `<h3>API Endpoints</h3><div class="routes">${
+      node.details.routes.map(r => `
+        <div class="route">
+          <span class="method ${r.method}">${r.method}</span>
+          <span class="route-path">${r.path}</span>
+          <span class="route-desc">${r.desc || ''}</span>
+        </div>`).join('')
+    }</div>`;
+    body.appendChild(sec);
+  }
+
+  // Schema
+  if (node.details?.schema) {
+    const sec = document.createElement('div');
+    sec.className = 'psec';
+    sec.innerHTML = `<h3>Database Tables</h3><div class="schema">${
+      node.details.schema.map(t => `
+        <div class="table-item">
+          <div class="table-name">${t.name}</div>
+          <div class="table-cols">${t.cols}</div>
+        </div>`).join('')
+    }</div>`;
+    body.appendChild(sec);
+  }
+
+  // Production gaps
+  if (node.details?.prodGaps) {
+    const sec = document.createElement('div');
+    sec.className = 'psec';
+    sec.innerHTML = `<h3>⚠ Production Gaps</h3><div class="gap-list">${
+      node.details.prodGaps.map(g => `
+        <div class="gap-item ${g.level}">
+          <div class="gap-title">${g.title}</div>
+          <div class="gap-desc">${g.desc}</div>
+        </div>`).join('')
+    }</div>`;
+    body.appendChild(sec);
+  }
+
+  document.getElementById('panel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+  if (selectedNodeId) {
+    const prev = document.getElementById(`node-${selectedNodeId}`);
+    if (prev) prev.classList.remove('selected');
+    selectedNodeId = null;
+  }
+}
+
+// ── CHECKLIST ─────────────────────────────────────────────────────
+function toggleChecklist() {
+  const cl = document.getElementById('checklist');
+  cl.classList.toggle('open');
+  document.getElementById('checklist-btn').classList.toggle('active', cl.classList.contains('open'));
+}
+
+// ── PAN / ZOOM ────────────────────────────────────────────────────
+function applyTransform() {
+  document.getElementById('view-group').setAttribute(
+    'transform', `translate(${tx},${ty}) scale(${scale})`
+  );
+}
+
+function resetView() {
+  tx = 20; ty = 20; scale = 0.82;
+  applyTransform();
+}
+
+function zoomIn()  { scale = Math.min(scale * 1.2, 3);   applyTransform(); }
+function zoomOut() { scale = Math.max(scale / 1.2, 0.25); applyTransform(); }
+
+function initPanZoom() {
+  const wrap = document.getElementById('canvas-wrap');
+
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? 1.12 : 0.89;
+    const newScale = Math.max(0.25, Math.min(3, scale * factor));
+    // Zoom toward mouse position
+    tx = mx - (mx - tx) * (newScale / scale);
+    ty = my - (my - ty) * (newScale / scale);
+    scale = newScale;
+    applyTransform();
+  }, { passive: false });
+
+  wrap.addEventListener('mousedown', e => {
+    if (e.target.closest('.node-group')) return;
+    dragging = true;
+    dragStart = { x: e.clientX - tx, y: e.clientY - ty };
+    wrap.classList.add('dragging');
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    tx = e.clientX - dragStart.x;
+    ty = e.clientY - dragStart.y;
+    applyTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    dragging = false;
+    document.getElementById('canvas-wrap').classList.remove('dragging');
+  });
+
+  // Close panel on canvas click
+  document.getElementById('canvas-wrap').addEventListener('click', e => {
+    if (!e.target.closest('.node-group')) closePanel();
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  renderDiagram();
+  initPanZoom();
+  resetView();
+});
+</script>
+</body>
+</html>

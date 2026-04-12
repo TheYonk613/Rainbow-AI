@@ -82,7 +82,7 @@ export default function App() {
   const fetchJourney = useCallback(async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/calendar/journey?date=${today}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/calendar/journey?date=${today}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setCompletedTasks(data.completedTasks || []);
@@ -95,11 +95,10 @@ export default function App() {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const res = await fetch('${import.meta.env.VITE_API_URL}/api/calendar/events');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/calendar/events`, { credentials: 'include' });
       if (res.ok) {
           const data = await res.json();
           setEvents(data || []);
-          setIsAuthenticated(true);
       }
     } catch (err) {
       console.error('Backend Integration Pipeline Offline:', err);
@@ -133,23 +132,42 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
   }, [settings])
 
-  // OAuth Ingress Hook
+  // Auth state: check the JWT cookie on every page load via /api/auth/me.
+  // This restores the session after a page refresh — no more losing auth state.
+  // When ?login=success appears (post-OAuth redirect), we immediately re-check /me
+  // to confirm the cookie was set correctly, then clean the URL.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const loginStatus = params.get('login')
-    if (loginStatus === 'success') {
-      setIsAuthenticated(true)
-      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname
-      window.history.replaceState({ path: cleanUrl }, '', cleanUrl)
-    }
-  }, [])
+    let isMounted = true;
+    const params = new URLSearchParams(window.location.search);
+    const loginStatus = params.get('login');
 
-  // Phase 2: Autonomous SQLite Local Database Data Overrides
+    if (loginStatus) {
+      // Clean the URL regardless of outcome
+      const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+      window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+    }
+
+    (async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, { credentials: 'include' });
+        if (isMounted) {
+          setIsAuthenticated(res.ok);
+        }
+      } catch {
+        if (isMounted) setIsAuthenticated(false);
+      }
+    })();
+
+    return () => { isMounted = false; };
+  }, []);
+
+  // Initial data load: sync from Google then fetch local events.
+  // Only runs once on mount; subsequent refreshes come from user actions.
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
-        await fetch('${import.meta.env.VITE_API_URL}/api/calendar/sync', { method: 'POST' });
+        await fetch(`${import.meta.env.VITE_API_URL}/api/calendar/sync`, { method: 'POST', credentials: 'include' });
         if (isMounted) {
           await fetchEvents();
           await fetchJourney();
